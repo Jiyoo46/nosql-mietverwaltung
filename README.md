@@ -28,3 +28,17 @@ docker compose up -d --build
   [Apartment rental offers in Germany](https://www.kaggle.com/datasets/corrieaar/apartment-rental-offers-in-germany)
   (ImmoScout24, nur für Forschungszwecke). `immo_data.csv` nach `data/raw/` legen, wird nicht versioniert.
 - Mieter, Verträge, Vorgänge: fiktiv generiert (Faker), aufgebaut auf den echten Objekten.
+
+Datenstand herstellen bzw. zurücksetzen (ca. 10 s, fester Seed):
+
+```bash
+docker exec app python -m scripts.reset
+```
+
+| Collection | Dokumente | Quelle |
+|---|---|---|
+| `angebote` | 16.040 | echt (ImmoScout24, Baden-Württemberg, bereinigt) |
+| `objekte` | 250 (955 eingebettete Einheiten) | Adresse und erste Wohnung echt, weitere Einheiten abgeleitet |
+| `mieter` | 2.326 | fiktiv (Personen und Firmen) |
+| `vertraege` | 1.981 | fiktiv, mit eingebetteten Mietanpassungen und Übergabeprotokollen |
+| `vorgaenge` | 11.078 | fiktiv, polymorph (Schaden, Mietminderung, Korrespondenz, Mieterhöhung, Kündigung, Frist) |
