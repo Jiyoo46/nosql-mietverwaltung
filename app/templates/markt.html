@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% from "_cache.html" import herkunft %}
+{% block titel %}Markt{% endblock %}
+{% block inhalt %}
+<main class="seite" style="gap:20px">
+
+<div>
+  <div class="kicker">Echte Daten</div>
+  <h1 class="titel">Markt</h1>
+  <p class="lead">16.040 Mietangebote aus Baden-Württemberg (ImmoScout24, 2018–2020, über Kaggle, nur für Forschungszwecke). Jedes Inserat speichert nur die Angaben, die der Anbieter gemacht hat.</p>
+</div>
+
+<div class="zweispaltig" style="grid-template-columns:minmax(0,5fr) minmax(0,7fr)">
+
+<section class="karte">
+  <div class="karte-kopf">
+    <h2>Mietniveau je Kreis</h2>
+    {{ herkunft(kreise.cache) }}
+  </div>
+  <div class="tabelle-rahmen">
+    <table>
+      <thead><tr><th scope="col">Kreis</th><th scope="col" class="rechts">Angebote</th><th scope="col" class="rechts">Median €/m²</th></tr></thead>
+      <tbody>
+        {% for k in kreise.daten %}
+        <tr{% if k.kreis == kreis %} class="gewaehlt"{% endif %}>
+          <td><a href="?kreis={{ k.kreis|urlencode }}"{% if k.kreis == kreis %} aria-current="true"{% endif %}>{{ k.kreis }}</a></td>
+          <td class="rechts mono">{{ k.anzahl|zahl }}</td>
+          <td class="rechts mono">{{ k.median_qm|zahl(2) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="spur">angebote → $group nach Kreis → $median ($divide kalt / wohnflaeche) · Kreise ab 50 Angeboten · Redis-Key markt:kreise</div>
+</section>
+
+<section class="karte">
+  <div class="karte-kopf">
+    <h2>Angebote in {{ kreis }} <span class="grau" style="font-weight:400">{{ gesamt|zahl }}</span></h2>
+  </div>
+  <form class="karte-inhalt" method="get" style="padding-top:8px;padding-bottom:8px">
+    <input type="hidden" name="kreis" value="{{ kreis }}">
+    <fieldset>
+      <legend>Muss enthalten (Array-Abfrage mit $all)</legend>
+      <div style="display:flex;flex-wrap:wrap;gap:4px 16px">
+        {% for a in alle_ausstattung %}
+        <label class="check"><input type="checkbox" name="ausstattung" value="{{ a }}"{% if a in ausstattung %} checked{% endif %} onchange="this.form.submit()"> {{ a }}</label>
+        {% endfor %}
+      </div>
+    </fieldset>
+  </form>
+  <ul style="list-style:none;margin:0;padding:0 22px">
+    {% for a in docs %}
+    <li id="angebot-{{ a._id }}" style="padding:14px 0;border-top:1px solid var(--linie-2)">
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font-weight:500">{{ a.wohnflaeche|zahl }} m² · {{ zimmer(a.zimmer) }} Zimmer · {{ a.miete.kalt|euro(0) }} kalt</div>
+          <div class="klein grau">{% if a.adresse.strasse %}{{ a.adresse.strasse }} {{ a.adresse.hausnummer or "" }}, {% endif %}{{ a.adresse.plz }} {{ ortsangabe(a.adresse) }} · {{ a.erfasst|datum }}</div>
+        </div>
+        <div class="mono klein">{{ (a.miete.kalt / a.wohnflaeche)|zahl(2) }} €/m²</div>
+      </div>
+      <div class="chips" style="margin-top:8px">
+        {% for f, name in [("baujahr", "Baujahr"), ("zustand", "Zustand"), ("energie", "Energie"), ("etage", "Etage"), ("haustiere", "Haustiere"), ("beschreibung", "Beschreibung")] %}
+        <span class="chip{{ '' if a[f] is defined else ' fehlt' }}">{{ name }}{{ "" if a[f] is defined else " fehlt" }}</span>
+        {% endfor %}
+        {% for x in a.ausstattung or [] %}<span class="chip">{{ x }}</span>{% endfor %}
+      </div>
+      <details class="dok">
+        <summary>Dokument anzeigen ({{ a|length }} Felder)</summary>
+        <pre class="dokument">{{ a|shell }}</pre>
+      </details>
+    </li>
+    {% endfor %}
+  </ul>
+  <div class="seitenwahl">
+    <span class="grau klein">Seite {{ seite_nr }} von {{ [seiten, 1]|max }}</span>
+    <div style="display:flex;gap:8px">
+      {% set qs = "kreis=" ~ (kreis|urlencode) ~ ("&ausstattung=" ~ ausstattung|join("&ausstattung=") if ausstattung else "") %}
+      {% if seite_nr > 1 %}<a class="knopf" href="?{{ qs }}&seite_nr={{ seite_nr - 1 }}">Zurück</a>{% endif %}
+      {% if seite_nr < seiten %}<a class="knopf" href="?{{ qs }}&seite_nr={{ seite_nr + 1 }}">Weiter</a>{% endif %}
+    </div>
+  </div>
+  <div class="spur">angebote.find({{ filter_|tojson }}) · Index adresse.kreis_1_miete.kalt_1{% if ausstattung %} · Multikey über das Array ausstattung{% endif %}</div>
+</section>
+
+</div>
+</main>
+{% endblock %}

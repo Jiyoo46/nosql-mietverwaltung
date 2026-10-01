@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% from "_cache.html" import herkunft %}
+{% block titel %}{{ o.bezeichnung }}{% endblock %}
+{% block inhalt %}
+<main class="seite eng">
+
+<nav class="pfad" aria-label="Pfad"><a href="/objekte">Objekte</a> / {{ o.bezeichnung }}</nav>
+
+<div class="kopfzeile">
+  <div>
+    <div class="kicker">{{ o.typ }}</div>
+    <h1 class="titel">{{ o.adresse.strasse }} {{ o.adresse.hausnummer }}</h1>
+    <p class="lead">
+      {{ o.adresse.plz }} {{ ortsangabe(o.adresse) }}
+      {% if o.baujahr %} · Baujahr {{ o.baujahr|int }}{% endif %}
+      {% if o.energie and o.energie.heizungsart %} · {{ o.energie.heizungsart|heizung }}{% endif %}
+      · verwaltet seit {{ o.verwaltet_seit|monat_jahr }}
+    </p>
+  </div>
+  <div style="display:flex;gap:28px;align-items:flex-end;flex-wrap:wrap">
+    <div>
+      <div class="grau klein">Soll-Miete pro Monat</div>
+      <div style="font-size:26px;font-weight:600;color:var(--petrol)">{{ o.soll_miete_monat|euro }}</div>
+    </div>
+    <a class="knopf" style="font-size:13px;font-weight:400;border-color:var(--linie);background:var(--flaeche)" href="/markt?kreis={{ o.adresse.kreis|urlencode }}#angebot-{{ o.quelle.angebot_id }}">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3A8378" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+      Echtes Inserat #{{ o.quelle.angebot_id }} · {{ o.quelle.erfasst|datum }}
+    </a>
+  </div>
+</div>
+
+<div class="zweispaltig">
+
+<div class="spalte">
+  <section class="karte">
+    <div class="karte-kopf">
+      <h2>Einheiten <span class="grau" style="font-weight:400">{{ o.einheiten|length }}</span></h2>
+      <span class="grau klein">{{ o.einheiten|map(attribute="typ")|unique|list|length }} Typen mit eigenen Feldern in einem Dokument</span>
+    </div>
+    <div class="tabelle-rahmen">
+      <table style="min-width:600px">
+        <thead><tr><th scope="col">Einheit</th><th scope="col">Merkmale</th><th scope="col">Mieter</th><th scope="col" class="rechts">Kaltmiete</th></tr></thead>
+        <tbody>
+          {% for e in o.einheiten %}
+          {% set v = e.vertrag %}
+          <tr class="klickbar{{ ' gewaehlt' if e.einheit_id == gewaehlt.einheit_id }}" data-link="?einheit={{ e.einheit_id }}&ansicht={{ ansicht }}">
+            <td class="nowrap"><a href="?einheit={{ e.einheit_id }}&ansicht={{ ansicht }}" class="mono" style="font-weight:500;color:inherit;text-decoration:none"{% if e.einheit_id == gewaehlt.einheit_id %} aria-current="true"{% endif %}>{{ e.einheit_id }}</a> <span class="grau">{{ EINHEIT_TYP[e.typ] }}</span></td>
+            <td style="color:var(--grau-2)">{{ merkmale(e) }}</td>
+            <td>
+              {% if v %}{{ mieter_text(v.mieter_namen) }}
+                {% if v.status == "gekuendigt" %}<div class="klein rost" style="font-weight:500">gekündigt zum {{ v.ende|datum }}</div>{% endif %}
+              {% else %}<span class="marke-klein warn">leer</span>{% endif %}
+            </td>
+            <td class="rechts mono nowrap">{{ v.miete.kalt|euro if v else "—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="spur">objekte.findOne → {{ o.einheiten|length }} eingebettete Einheiten · vertraege.find({_id: {$in: […{{ o.einheiten|selectattr("vertrag")|list|length }}]}}) · Join in der Anwendung, 2 Abfragen</div>
+  </section>
+
+  <section class="karte">
+    <div class="karte-kopf" style="align-items:center">
+      <h2>Offene Vorgänge <span class="grau" style="font-weight:400">{{ vorgaenge|length }}</span></h2>
+      <button type="button" class="knopf voll" data-dialog-oeffnen="schaden">Schaden melden</button>
+    </div>
+    {% if vorgaenge %}
+    <ul class="zeilenliste">
+      {% for v in vorgaenge %}
+      <li>
+        <span class="typmarke{{ ' warn' if vorgang_warnung(v) }}">{{ VORGANG_TYP[v.typ] }}</span>
+        <span><span style="font-weight:500">{{ v.titel }}</span>{% set det = vorgang_detail(v) %}{% if det %} <span class="grau">· {{ det }}</span>{% endif %} <span class="grau klein">({{ STATUS[v.status] }})</span></span>
+        <span class="grau klein nowrap">{{ vorgang_datum(v) }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="leer-hinweis">Keine offenen Vorgänge.</p>
+    {% endif %}
+    {% if fristen %}
+    <div style="padding:0 22px 16px" class="klein grau">Fristen: {% for f in fristen %}{{ f.titel }} ({{ f.faellig_am|datum }}){{ ", " if not loop.last }}{% endfor %}</div>
+    {% endif %}
+    <div class="spur">vorgaenge.find({objekt_id, status: {$ne: "erledigt"}}) · Index objekt_id_1_status_1_datum_-1 · polymorph: jeder Typ hat eigene Felder</div>
+  </section>
+</div>
+
+<aside class="karte betont" aria-label="Einheit {{ gewaehlt.einheit_id }}">
+  {% if vertrag %}
+  <div style="padding:18px 22px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+    <div>
+      <div class="grau klein">Vertrag zu {{ gewaehlt.einheit_id }}{% if gewaehlt.lage %} · {{ gewaehlt.lage }}{% endif %}</div>
+      <h2 style="margin-top:2px;font-size:20px;font-weight:600">{{ mieter_text(vertrag.mieter_namen) }}</h2>
+      <div class="mono klein grau">{{ vertrag.nummer }} · {{ VERTRAGSART[vertrag.art] }} · seit {{ vertrag.beginn|datum }}</div>
+    </div>
+    <span class="marke-klein{{ ' warn' if vertrag.status != 'aktiv' }}">{{ "aktiv" if vertrag.status == "aktiv" else "gekündigt" }}</span>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Darstellung">
+    <a role="tab" href="?einheit={{ gewaehlt.einheit_id }}&ansicht=ansicht" aria-selected="{{ 'true' if ansicht != 'dokument' else 'false' }}">Ansicht</a>
+    <a role="tab" href="?einheit={{ gewaehlt.einheit_id }}&ansicht=dokument" aria-selected="{{ 'true' if ansicht == 'dokument' else 'false' }}">Dokument</a>
+  </div>
+
+  {% if ansicht == "dokument" %}
+  <div class="karte-inhalt">
+    <p class="grau klein" style="margin:0 0 10px">Genau dieses Dokument liefert ein einziger Lesezugriff. Relational wären es fünf Tabellen: Vertrag, Mietanpassung, Übergabe, Zählerstand, Raum.</p>
+    <pre class="dokument">{{ vertrag_roh|shell }}</pre>
+  </div>
+  {% else %}
+  <div class="karte-inhalt stapel" style="gap:22px">
+    <dl class="daten" style="margin:0">
+      <div><dt>Kaltmiete</dt><dd>{{ vertrag.miete.kalt|euro }}{% if vertrag.miete.kalt != vertrag.miete.kalt_bei_beginn %}<small>bei Beginn {{ vertrag.miete.kalt_bei_beginn|euro }}</small>{% endif %}</dd></div>
+      <div><dt>NK-Vorauszahlung</dt><dd>{{ vertrag.miete.nebenkosten_vorauszahlung|euro }}</dd></div>
+      {% if vertrag.kaution %}<div><dt>Kaution</dt><dd>{{ vertrag.kaution.betrag|euro }}<small>{{ vertrag.kaution.art }}</small></dd></div>{% endif %}
+      {% if gewaehlt.typ == "wohnung" %}<div><dt>Wohnfläche</dt><dd>{{ gewaehlt.wohnflaeche|zahl }} m² · {{ zimmer(gewaehlt.zimmer) }} Zimmer</dd></div>
+      {% elif gewaehlt.typ == "gewerbe" %}<div><dt>Nutzfläche</dt><dd>{{ gewaehlt.nutzflaeche|zahl }} m²{% if vertrag.miete.umsatzsteuer_prozent %}<small>zzgl. {{ vertrag.miete.umsatzsteuer_prozent }} % USt</small>{% endif %}</dd></div>{% endif %}
+    </dl>
+
+    {% if markt %}
+    <div>
+      <h3 style="font-size:15px;font-weight:600;margin-bottom:10px">Marktvergleich</h3>
+      {% set m = markt.markt %}
+      {% if m.anzahl %}
+      {% set lo = [m.min_qm, markt.ist_qm]|min - 1 %}{% set hi = [m.max_qm, markt.ist_qm]|max + 1 %}
+      <div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;color:var(--grau)"><span>{{ m.anzahl }} Angebote in {{ m.gebiet }} · {{ (markt.wohnflaeche*0.8)|zahl }}–{{ (markt.wohnflaeche*1.2)|zahl }} m²</span><span class="mono {{ 'rost' if markt.cache.quelle == 'redis' else '' }}">{{ "Redis" if markt.cache.quelle == "redis" else "MongoDB" }} · {{ markt.cache.dauer_ms|zahl(1) }} ms</span></div>
+      <div class="spanne" aria-hidden="true">
+        <div class="band" style="left: {{ (m.min_qm - lo) / (hi - lo) * 100 }}%; width: {{ (m.max_qm - m.min_qm) / (hi - lo) * 100 }}%"></div>
+        <div class="median" style="left: {{ (m.median_qm - lo) / (hi - lo) * 100 }}%"></div>
+        <div class="ist" style="left: {{ (markt.ist_qm - lo) / (hi - lo) * 100 }}%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between" class="mono klein grau"><span>{{ m.min_qm|zahl(2) }}</span><span>Median {{ m.median_qm|zahl(2) }}</span><span>{{ m.max_qm|zahl(2) }} €/m²</span></div>
+      <p style="margin:10px 0 0;font-size:14px">Ist-Miete <strong>{{ markt.ist_qm|zahl(2) }} €/m²</strong>, <strong>{{ markt.abweichung_prozent|abs|zahl(1) }} % {{ "unter" if markt.abweichung_prozent < 0 else "über" }}</strong> dem Median vergleichbarer Angebote.</p>
+      <p class="grau" style="margin:4px 0 0;font-size:12px">{{ markt.hinweis }}.</p>
+      {% else %}
+      <p class="grau klein" style="margin:0">Keine vergleichbaren Angebote gefunden.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div>
+      <h3 style="font-size:15px;font-weight:600;margin-bottom:10px">Mietanpassungen</h3>
+      <ol class="zeitleiste">
+        {% for a in vertrag.mietanpassungen|reverse %}
+        <li><div class="grau klein">{{ a.gueltig_ab|datum }} · {{ a.grund }}</div><div class="mono" style="font-size:14px">{{ a.alt|euro }} → {{ a.neu|euro }}</div></li>
+        {% endfor %}
+        <li class="start"><div class="grau klein">{{ vertrag.beginn|datum }} · Mietbeginn</div><div class="mono" style="font-size:14px">{{ vertrag.miete.kalt_bei_beginn|euro }}</div></li>
+      </ol>
+    </div>
+
+    {% for u in vertrag.uebergaben or [] %}
+    <div>
+      <h3 style="font-size:15px;font-weight:600;margin-bottom:10px">Übergabeprotokoll {{ "Einzug" if u.art == "einzug" else "Auszug" }} · {{ u.datum|datum }}</h3>
+      <div class="zaehler">
+        {% for z in u.zaehlerstaende %}<div><div class="grau" style="font-size:12px">{{ z.art }}</div><div class="mono" style="font-size:14px">{{ z.stand|zahl(1 if z.einheit == "m³" else 0) }} {{ z.einheit }}</div></div>{% endfor %}
+      </div>
+      <p style="margin:10px 0 0;font-size:14px">Schlüssel: {% for s in u.schluessel %}{{ s.art }} {{ s.anzahl }}{{ " · " if not loop.last }}{% endfor %}</p>
+      {% set maengel = u.raeume|selectattr("maengel")|list %}
+      <p style="margin:6px 0 0;font-size:14px">{{ u.raeume|length }} Räume, {{ u.raeume|length - maengel|length }} einwandfrei.
+        {% for r in maengel %}<span class="rost">{{ r.name }}: {{ r.maengel|join(", ") }}.</span> {% endfor %}</p>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <div class="spur">vertraege.findOne({_id}) · Anpassungen und Übergaben eingebettet · 1 Abfrage</div>
+
+  {% else %}
+  <div class="karte-inhalt">
+    <div class="grau klein">{{ gewaehlt.einheit_id }} · {{ EINHEIT_TYP[gewaehlt.typ] }}</div>
+    <h2 style="margin-top:2px;font-size:20px;font-weight:600">Derzeit leer</h2>
+    <p class="grau" style="margin:6px 0 0">{{ merkmale(gewaehlt) }}</p>
+  </div>
+  {% endif %}
+
+  {% if historie %}
+  <div style="border-top:1px solid var(--linie);padding:14px 22px 18px">
+    <h3 style="font-size:15px;font-weight:600;margin-bottom:8px">Frühere Verträge <span class="grau" style="font-weight:400">{{ historie|length }}</span></h3>
+    <ul style="list-style:none;margin:0;padding:0;font-size:14px;display:flex;flex-direction:column;gap:6px">
+      {% for h in historie %}
+      <li style="display:flex;justify-content:space-between;gap:12px"><span>{{ mieter_text(h.mieter_namen) }}</span><span class="grau klein nowrap">{{ h.beginn|datum }} – {{ h.ende|datum }}</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</aside>
+
+</div>
+</main>
+
+<dialog id="schaden" aria-labelledby="schaden-titel">
+  <form data-schaden-form data-objekt="{{ o._id }}">
+    <h2 id="schaden-titel">Schaden melden</h2>
+    <div class="feld">
+      <label for="s-einheit">Einheit</label>
+      <select id="s-einheit" name="einheit_id">
+        <option value="">ganzes Objekt</option>
+        {% for e in o.einheiten %}<option value="{{ e.einheit_id }}"{% if e.einheit_id == gewaehlt.einheit_id %} selected{% endif %}>{{ e.einheit_id }} · {{ EINHEIT_TYP[e.typ] }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="feld">
+      <label for="s-kategorie">Art des Schadens</label>
+      <select id="s-kategorie" name="kategorie">
+        {% for k, g in kategorien %}<option value="{{ k }}" data-gewerk="{{ g }}">{{ k }}</option>{% endfor %}
+      </select>
+    </div>
+    <fieldset class="feld">
+      <legend>Priorität</legend>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        {% for p in ["niedrig", "mittel", "hoch"] %}<label class="check"><input type="radio" name="prioritaet" value="{{ p }}"{% if p == "mittel" %} checked{% endif %}> {{ p }}</label>{% endfor %}
+      </div>
+    </fieldset>
+    <div class="feld">
+      <label for="s-text">Beschreibung (optional)</label>
+      <textarea id="s-text" name="beschreibung"></textarea>
+    </div>
+    <p class="hinweis warn" data-fehler hidden></p>
+    <div class="knopfreihe">
+      <button type="button" class="knopf" data-dialog-schliessen>Abbrechen</button>
+      <button type="submit" class="knopf voll">Speichern</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}

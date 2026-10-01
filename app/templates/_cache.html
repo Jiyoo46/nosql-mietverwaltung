@@ -1,0 +1,8 @@
+{# Herkunft einer gecachten Antwort: Redis oder MongoDB, Dauer, Restlaufzeit #}
+{% macro herkunft(c) -%}
+{% if c.quelle == "redis" -%}
+<span class="badge redis"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>aus Redis · {{ c.dauer_ms|zahl(1) }} ms · noch {{ c.ttl_s }} s gültig</span>
+{%- else -%}
+<span class="badge mongodb"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>aus MongoDB berechnet · {{ c.dauer_ms|zahl(1) }} ms</span>
+{%- endif %}
+{%- endmacro %}

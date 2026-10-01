@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block titel %}NoSQL-Labor{% endblock %}
+{% block inhalt %}
+<main class="seite" style="gap:20px">
+
+<div class="kopfzeile">
+  <div>
+    <div class="kicker">Live-Vorführung</div>
+    <h1 class="titel">NoSQL-Labor</h1>
+    <p class="lead">Sieben Konzepte am laufenden System. Jede Zahl wird beim Klick gemessen, jeweils mit Vorteil und Preis gegenüber einer relationalen Datenbank.</p>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span class="grau klein" data-reset-info></span>
+    <button type="button" class="knopf" data-reset>Demo-Stand wiederherstellen</button>
+  </div>
+</div>
+
+<div class="labor">
+
+<section class="karte span2" style="grid-column:span 2">
+  <div class="karte-kopf" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+      <div class="nr">01</div>
+      <h2>Replikation und Failover</h2>
+      <p>Replica Set rs0 mit drei Knoten. Fällt der Primary aus, wählen die übrigen einen neuen.</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button type="button" class="knopf warn" data-failover>Primary abschalten</button>
+      <button type="button" class="knopf" data-knoten-starten>Knoten wieder starten</button>
+    </div>
+  </div>
+  <div class="labor-inhalt">
+    <div class="knoten">
+      {% for k in ["mongo1", "mongo2", "mongo3"] %}
+      <div data-karte="{{ k }}">
+        <div style="display:flex;justify-content:space-between;align-items:center"><span class="mono" style="font-weight:500">{{ k }}</span><span class="punkt unklar"></span></div>
+        <div class="rolle">…</div>
+        <div class="grau klein" data-text></div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="protokoll" data-protokoll="failover">Bereit. Der Knoten wird hart beendet (wie ein Absturz), danach wird die Zeit bis zum neuen Primary gemessen.</div>
+  </div>
+  <div class="vp">
+    <div><b>Vorteil</b> · Ausfallsicherheit eingebaut, die App schreibt nach der Wahl ohne Neustart weiter.</div>
+    <div><b class="preis">Preis</b> · Drei Server statt einem; bis zur Wahl (Herzschlag-Timeout 10 s) keine Schreibzugriffe.</div>
+  </div>
+</section>
+
+<section class="karte">
+  <div class="karte-kopf">
+    <div class="nr">02</div>
+    <h2>Redis-Cache</h2>
+    <p>Dashboard-Kennzahlen: fünf Aggregationen über vier Collections.</p>
+  </div>
+  <div class="labor-inhalt">
+    <div style="display:flex;gap:4px 20px;flex-wrap:wrap">
+      <label class="check"><input type="checkbox" data-schalter="cache" checked> Cache aktiv</label>
+      <label class="check"><input type="checkbox" data-schalter="invalidierung" checked> Invalidierung bei Änderung</label>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button type="button" class="knopf voll" data-cache-messen>Zweimal abfragen und messen</button>
+      <button type="button" class="knopf" data-cache-veraltet>Schaden anlegen, neu lesen</button>
+    </div>
+    <div class="vergleich" data-cache-ergebnis hidden>
+      <span>1. Aufruf</span><div class="balken bestand" data-balken="1"></div><span class="mono" data-wert="1"></span>
+      <span>2. Aufruf</span><div class="balken" style="background:var(--redis)" data-balken="2"></div><span class="mono" data-wert="2"></span>
+    </div>
+    <p class="hinweis" data-cache-text hidden></p>
+    <div class="mono klein" style="color:var(--grau-2);display:flex;flex-direction:column;gap:4px" data-cache-keys></div>
+  </div>
+  <div class="vp">
+    <div><b>Vorteil</b> · Teure Auswertungen kosten nur einmal pro TTL.</div>
+    <div><b class="preis">Preis</b> · Zweites System, Invalidierung ist Handarbeit, Daten können veralten.</div>
+  </div>
+</section>
+
+<section class="karte">
+  <div class="karte-kopf">
+    <div class="nr">03</div>
+    <h2>Konsistenz einstellen</h2>
+    <p>Pro Abfrage wählbar: wie viele Knoten bestätigen, von wo gelesen wird.</p>
+  </div>
+  <div class="labor-inhalt">
+    <fieldset>
+      <legend style="margin-bottom:6px">Write Concern</legend>
+      <div class="segment mono" data-gruppe="w">
+        <button type="button" data-wert="1" aria-pressed="false">w: 1</button>
+        <button type="button" data-wert="majority" aria-pressed="true">w: "majority"</button>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend style="margin-bottom:6px">Read Preference</legend>
+      <div class="segment mono" data-gruppe="lesen">
+        <button type="button" data-wert="primary" aria-pressed="true">primary</button>
+        <button type="button" data-wert="secondary" aria-pressed="false">secondary</button>
+      </div>
+    </fieldset>
+    <button type="button" class="knopf voll" style="width:fit-content" data-konsistenz>50-mal schreiben und sofort lesen</button>
+    <p class="hinweis" data-konsistenz-text hidden></p>
+  </div>
+  <div class="vp">
+    <div><b>Vorteil</b> · Konsistenz gegen Tempo je Anwendungsfall abwägbar (CAP).</div>
+    <div><b class="preis">Preis</b> · Die Entscheidung liegt beim Entwickler, eine falsche Wahl bleibt unbemerkt.</div>
+  </div>
+</section>
+
+<section class="karte">
+  <div class="karte-kopf">
+    <div class="nr">04</div>
+    <h2>Index</h2>
+    <p>Marktvergleich: Angebote in 70178 mit 73–109 m², einmal ohne, einmal mit Index.</p>
+  </div>
+  <div class="labor-inhalt">
+    <button type="button" class="knopf voll" style="width:fit-content" data-index>Abfrage mit explain() ausführen</button>
+    <div class="messung" data-index-ergebnis hidden>
+      <div class="schlecht"><div class="mono klein rost" style="font-weight:500" data-plan="ohne"></div><div class="gross" data-docs="ohne"></div><div class="grau klein" data-info="ohne"></div></div>
+      <div><div class="mono klein" style="color:var(--petrol);font-weight:500" data-plan="mit"></div><div class="gross" data-docs="mit"></div><div class="grau klein" data-info="mit"></div></div>
+    </div>
+    <div class="mono klein" style="color:var(--grau-2)" data-index-fuss></div>
+  </div>
+  <div class="vp">
+    <div><b>Vorteil</b> · Auch Felder in Unterdokumenten und Arrays sind indexierbar.</div>
+    <div><b class="preis">Preis</b> · Wie in SQL: Speicher und langsamere Schreibzugriffe je Index.</div>
+  </div>
+</section>
+
+<section class="karte">
+  <div class="karte-kopf">
+    <div class="nr">05</div>
+    <h2>Transaktion: Mieterwechsel</h2>
+    <p>Fünf Schreibvorgänge in drei Collections, alles oder nichts.</p>
+  </div>
+  <div class="labor-inhalt">
+    <ol class="schritte" data-schritte>
+      {% for s in ["Alten Vertrag beenden", "Neuen Mieter anlegen", "Neuen Vertrag anlegen", "Einheit auf vermietet setzen", "Vorgang dokumentieren"] %}
+      <li><span class="n">{{ loop.index }}</span><span>{{ s }}</span></li>
+      {% endfor %}
+    </ol>
+    <label class="check"><input type="checkbox" data-abbruch> Abbruch nach Schritt 3 simulieren</label>
+    <button type="button" class="knopf voll" style="width:fit-content" data-transaktion>Mieterwechsel ausführen</button>
+    <p class="hinweis" data-transaktion-text hidden></p>
+  </div>
+  <div class="vp">
+    <div><b>Vorteil</b> · ACID über mehrere Dokumente, wenn nötig.</div>
+    <div><b class="preis">Preis</b> · Nur mit Replica Set, teurer als Einzel-Updates; ein gutes Datenmodell braucht sie selten.</div>
+  </div>
+</section>
+
+<section class="karte">
+  <div class="karte-kopf">
+    <div class="nr">06</div>
+    <h2>Doppelt gespeicherte Namen</h2>
+    <p>Der Mietername steht im Mieter und als Kopie in jedem seiner Verträge.</p>
+  </div>
+  <div class="labor-inhalt">
+    <label class="check"><input type="checkbox" data-kopien checked> Kopien in den Verträgen mitändern</label>
+    <button type="button" class="knopf voll" style="width:fit-content" data-namensaenderung>Nachname ändern (Heirat)</button>
+    <div class="zwei" data-namen hidden>
+      <div><div class="mono klein grau">mieter</div><div style="font-weight:500" data-name-mieter></div></div>
+      <div data-kopie-box><div class="mono klein grau">vertraege.mieter_namen</div><div style="font-weight:500" data-name-kopie></div></div>
+    </div>
+    <p class="hinweis" data-namen-text hidden></p>
+  </div>
+  <div class="vp">
+    <div><b>Vorteil</b> · Vertragslisten ohne Lookup auf die Mieter.</div>
+    <div><b class="preis">Preis</b> · Jede Änderung muss alle Kopien finden; SQL normalisiert und hat das Problem nicht.</div>
+  </div>
+</section>
+
+<section class="karte span2" style="grid-column:span 2">
+  <div class="karte-kopf">
+    <div class="nr">07</div>
+    <h2>Flexibles Schema mit Regeln</h2>
+    <p data-schema-lead>Echte Inserate: jedes speichert nur, was der Anbieter angegeben hat.</p>
+  </div>
+  <div class="labor-inhalt" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px">
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <div class="histo" data-histo aria-label="Verteilung der Feldanzahl je Dokument"></div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px" class="klein grau"><span data-histo-min></span><span>Felder je Dokument</span><span data-histo-max></span></div>
+      </div>
+      <div class="klein" style="color:var(--grau-2)" data-fehlt></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <label for="roh" class="klein grau">Dokument in vorgaenge einfügen (JSON)</label>
+      <textarea id="roh" class="mono" style="font-size:12px;min-height:96px" data-roh>{"typ": "party", "titel": "Sommerfest", "status": "offen"}</textarea>
+      <button type="button" class="knopf voll" style="width:fit-content" data-einfuegen>Einfügen</button>
+      <p class="hinweis" data-roh-text hidden></p>
+    </div>
+  </div>
+  <div class="vp">
+    <div><b>Vorteil</b> · Keine NULL-Spalten, neue Felder ohne Migration.</div>
+    <div><b class="preis">Preis</b> · Struktur muss bewusst abgesichert werden ($jsonSchema), sonst wächst Wildwuchs.</div>
+  </div>
+</section>
+
+</div>
+</main>
+{% endblock %}
+{% block skripte %}<script src="/static/labor.js"></script>{% endblock %}

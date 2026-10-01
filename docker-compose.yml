@@ -55,6 +55,8 @@ services:
       - ./app:/code/app
       - ./scripts:/code/scripts
       - ./data:/code/data
+      # Für die Failover-Demo: die App darf MongoDB-Container stoppen und starten
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       mongo1: {condition: service_healthy}
       mongo2: {condition: service_started}

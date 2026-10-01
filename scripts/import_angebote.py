@@ -70,8 +70,21 @@ def wert(v):
     return v
 
 
+# Die Quelle ersetzt Bindestriche und Klammern durch "_"; bekannte Ortsnamen hier korrigieren
+ORTSNAMEN = {
+    "Bietigheim Bissingen": "Bietigheim-Bissingen",
+    "Leinfelden Echterdingen": "Leinfelden-Echterdingen",
+    "Wernau Neckar": "Wernau (Neckar)",
+    "Villingen Schwenningen": "Villingen-Schwenningen",
+    "Baden Baden": "Baden-Baden",
+}
+
+
 def ort(v):
-    return v.replace("_Kreis", " (Kreis)").replace("_", " ") if v else None
+    if not v:
+        return None
+    v = v.replace("_Kreis", " (Kreis)").replace("_", " ")
+    return ORTSNAMEN.get(v, v)
 
 
 def kompakt(d):

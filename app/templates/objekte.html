@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block titel %}Objekte{% endblock %}
+{% block inhalt %}
+<main class="seite" style="gap:20px">
+
+<div>
+  <h1 class="titel">Objekte</h1>
+  <p class="lead">{{ typ_anzahl.values()|sum }} verwaltete Objekte. Adresse, Baujahr und erste Wohnung stammen aus echten Inseraten.</p>
+</div>
+
+<form role="search" class="filterleiste" method="get" action="/objekte">
+  <div class="feld" style="flex:1 1 260px">
+    <label for="suche">Suche</label>
+    <input id="suche" name="q" type="search" value="{{ q }}" placeholder="Straße oder Ort">
+  </div>
+  <div class="feld" style="flex:0 1 220px">
+    <label for="kreis">Kreis</label>
+    <select id="kreis" name="kreis" onchange="this.form.submit()">
+      <option value="">Alle Kreise</option>
+      {% for k in kreise %}<option value="{{ k }}"{% if k == kreis %} selected{% endif %}>{{ k }}</option>{% endfor %}
+    </select>
+  </div>
+  <fieldset class="feld">
+    <legend>Typ</legend>
+    <div class="segment">
+      <a href="?q={{ q|urlencode }}&kreis={{ kreis|urlencode }}"{% if not typ %} class="an" aria-current="true"{% endif %}>Alle <span class="grau">{{ typ_anzahl.values()|sum }}</span></a>
+      {% for t in typen %}
+      <a href="?q={{ q|urlencode }}&kreis={{ kreis|urlencode }}&typ={{ t|urlencode }}"{% if t == typ %} class="an" aria-current="true"{% endif %}>{{ t }} <span class="grau">{{ typ_anzahl.get(t, 0) }}</span></a>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <input type="hidden" name="typ" value="{{ typ }}">
+  <button type="submit" class="knopf">Suchen</button>
+</form>
+
+<section class="karte">
+  <div class="tabelle-rahmen">
+    <table style="min-width:860px">
+      <thead>
+        <tr><th scope="col">Objekt</th><th scope="col">Ort</th><th scope="col">Typ</th><th scope="col">Einheiten</th><th scope="col" class="rechts">Leer</th><th scope="col" class="rechts">Offene Vorgänge</th><th scope="col" class="rechts">Baujahr</th></tr>
+      </thead>
+      <tbody>
+        {% for o in daten.daten %}
+        <tr>
+          <td><a href="/objekte/{{ o._id }}" style="font-weight:500">{{ o.bezeichnung }}</a><div class="klein grau">{{ o.adresse.plz }}</div></td>
+          <td>{{ ortsangabe(o.adresse) }}</td>
+          <td class="klein">{{ o.typ }}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="mono" style="min-width:18px">{{ o.einheiten_gesamt }}</span>
+              <span class="glyphen" aria-label="{{ o.wohnungen }} Wohnungen, {{ o.leer }} Einheiten leer">
+                {% for e in o.einheiten_kurz %}
+                {% if e.typ == "wohnung" %}<span class="{{ 'g-w' if e.status == 'vermietet' else 'g-l' }}"></span>
+                {% elif e.typ == "gewerbe" %}<span class="g-g"></span>
+                {% else %}<span class="g-s{{ '' if e.status == 'vermietet' else ' leer' }}"></span>{% endif %}
+                {% endfor %}
+              </span>
+            </div>
+          </td>
+          <td class="rechts mono">{{ o.leer }}</td>
+          <td class="rechts mono">{{ o.offene_vorgaenge }}</td>
+          <td class="rechts mono{{ '' if o.baujahr else ' grau' }}">{{ o.baujahr|int if o.baujahr else "—" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="leer-hinweis">Keine Objekte für diese Suche.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="seitenwahl">
+    <div class="legende">
+      <span><span class="g-w"></span>Wohnung vermietet</span>
+      <span><span class="g-l"></span>Wohnung leer</span>
+      <span><span class="g-g"></span>Gewerbe</span>
+      <span><span class="g-s"></span>Garage / Stellplatz</span>
+      <span>— Baujahr fehlt im Inserat</span>
+    </div>
+    {% if seiten > 1 %}
+    <nav class="segment" aria-label="Seiten">
+      {% for n in range(1, seiten + 1) %}
+      <a href="?q={{ q|urlencode }}&kreis={{ kreis|urlencode }}&typ={{ typ|urlencode }}&seite_nr={{ n }}"{% if n == seite_nr %} class="an" aria-current="page"{% endif %}>{{ n }}</a>
+      {% endfor %}
+    </nav>
+    {% endif %}
+  </div>
+  <div class="spur">objekte.aggregate: $match → $sort → $skip/$limit → $lookup vorgaenge (Index objekt_id, status, datum) → $project mit $size/$filter/$map über eingebettete einheiten · 1 Abfrage für {{ daten.daten|length }} von {{ daten.gesamt }} Objekten</div>
+</section>
+
+</main>
+{% endblock %}

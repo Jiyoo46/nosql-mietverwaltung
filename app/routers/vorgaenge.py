@@ -17,10 +17,12 @@ Status = Literal["offen", "in_bearbeitung", "erledigt"]
 
 @router.get("")
 def vorgaenge(typ: str | None = None, status: Status | None = None, offen: bool = False,
-              objekt_id: str | None = None, seite: int = 1, pro_seite: int = 25):
+              objekt_id: str | None = None, ohne_fristen: bool = False, seite: int = 1, pro_seite: int = 25):
     filter_ = {}
     if typ:
         filter_["typ"] = typ
+    elif ohne_fristen:
+        filter_["typ"] = {"$ne": "frist"}
     if status:
         filter_["status"] = status
     elif offen:

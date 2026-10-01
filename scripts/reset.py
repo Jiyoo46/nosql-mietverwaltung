@@ -5,7 +5,13 @@ Aufruf:  docker exec app python -m scripts.reset
 from app.db import redis
 from scripts import generate, import_angebote
 
-import_angebote.main()
-generate.main()
-redis.flushdb()
-print("Redis-Cache geleert")
+
+def main():
+    import_angebote.main()
+    generate.main()
+    redis.flushdb()
+    print("Redis-Cache geleert")
+
+
+if __name__ == "__main__":
+    main()

@@ -2,6 +2,9 @@ from typing import Literal
 
 from fastapi import APIRouter
 from pydantic import BaseModel
+from pymongo import ReadPreference
+from pymongo.errors import PyMongoError
+from redis.exceptions import RedisError
 
 from app.cache import SCHALTER_CACHE, SCHALTER_INVALIDIERUNG, schalter
 from app.db import mongo, redis
@@ -9,15 +12,26 @@ from app.db import mongo, redis
 router = APIRouter(tags=["System"])
 
 
+def replica_status():
+    """Rolle je Knoten. NEAREST: funktioniert auch, solange gerade kein Primary existiert."""
+    status = mongo.admin.command("replSetGetStatus", read_preference=ReadPreference.NEAREST)
+    return [{"host": m["name"].split(":")[0], "state": m["stateStr"], "health": m["health"]}
+            for m in status["members"]]
+
+
 @router.get("/health")
 def health():
-    """Zustand der Infrastruktur: Rolle jedes Replica-Set-Knotens und Redis-Erreichbarkeit."""
-    status = mongo.admin.command("replSetGetStatus")
-    members = [
-        {"host": m["name"], "state": m["stateStr"], "health": m["health"]}
-        for m in status["members"]
-    ]
-    return {"replica_set": status["set"], "members": members, "redis": redis.ping()}
+    """Zustand der Infrastruktur, wird von der Statusleiste alle 2 s abgefragt."""
+    try:
+        members = replica_status()
+    except PyMongoError as e:
+        members = [{"host": h, "state": "UNBEKANNT", "health": 0} for h in ("mongo1", "mongo2", "mongo3")]
+        members[0]["fehler"] = str(e)[:200]
+    try:
+        redis_ok = redis.ping()
+    except RedisError:
+        redis_ok = False
+    return {"replica_set": "rs0", "members": members, "redis": redis_ok}
 
 
 @router.get("/api/cache")

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block titel %}Vorgänge{% endblock %}
+{% block inhalt %}
+<main class="seite" style="gap:20px">
+
+<div>
+  <h1 class="titel">Vorgänge</h1>
+  <p class="lead">Schäden, Mietminderungen, Korrespondenz, Mieterhöhungen, Kündigungen und Fristen liegen in einer Collection, jeder Typ mit eigenen Feldern.</p>
+</div>
+
+<div class="filterleiste">
+  <fieldset class="feld">
+    <legend>Status</legend>
+    <div class="segment">
+      {% for s, name in [("offen", "Nicht erledigt"), ("erledigt", "Erledigt"), ("alle", "Alle")] %}
+      <a href="?status={{ s }}&typ={{ typ }}"{% if s == status %} class="an" aria-current="true"{% endif %}>{{ name }}</a>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <fieldset class="feld">
+    <legend>Typ</legend>
+    <div class="segment">
+      <a href="?status={{ status }}"{% if not typ %} class="an" aria-current="true"{% endif %}>Alle außer Fristen <span class="grau">{{ (anzahl.values()|sum - anzahl.get("frist", 0))|zahl }}</span></a>
+      {% for t, name in VORGANG_TYP.items() %}
+      <a href="?status={{ status }}&typ={{ t }}"{% if t == typ %} class="an" aria-current="true"{% endif %}>{{ name }} <span class="grau">{{ anzahl.get(t, 0)|zahl }}</span></a>
+      {% endfor %}
+    </div>
+  </fieldset>
+</div>
+
+<section class="karte">
+  <div class="tabelle-rahmen">
+    <table style="min-width:820px">
+      <thead><tr><th scope="col">Datum</th><th scope="col">Typ</th><th scope="col">Vorgang</th><th scope="col">Objekt</th><th scope="col">Status</th></tr></thead>
+      <tbody>
+        {% for v in daten.daten %}
+        <tr>
+          <td class="nowrap mono klein">{{ vorgang_datum(v) }}</td>
+          <td><span class="typmarke{{ ' warn' if vorgang_warnung(v) }}">{{ VORGANG_TYP[v.typ] }}</span></td>
+          <td><span style="font-weight:500">{{ v.titel }}</span>{% set det = vorgang_detail(v) %}{% if det %}<div class="klein grau">{{ det }}</div>{% endif %}</td>
+          <td><a href="/objekte/{{ v.objekt_id }}{% if v.einheit_id %}?einheit={{ v.einheit_id }}{% endif %}">{{ v.objekt_bezeichnung }}</a></td>
+          <td class="nowrap"><span class="marke-klein{{ ' warn' if v.status == 'offen' }}">{{ STATUS[v.status] }}</span></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="leer-hinweis">Keine Vorgänge für diesen Filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="seitenwahl">
+    <span class="grau klein">{{ daten.gesamt|zahl }} Vorgänge · Seite {{ seite_nr }} von {{ [seiten, 1]|max }}</span>
+    <div style="display:flex;gap:8px">
+      {% if seite_nr > 1 %}<a class="knopf" href="?status={{ status }}&typ={{ typ }}&seite_nr={{ seite_nr - 1 }}">Zurück</a>{% endif %}
+      {% if seite_nr < seiten %}<a class="knopf" href="?status={{ status }}&typ={{ typ }}&seite_nr={{ seite_nr + 1 }}">Weiter</a>{% endif %}
+    </div>
+  </div>
+  <div class="spur">vorgaenge.aggregate: $match → $sort datum → $skip/$limit → $lookup objekte (nur bezeichnung) · Index typ_1_status_1</div>
+</section>
+
+</main>
+{% endblock %}

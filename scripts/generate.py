@@ -146,7 +146,8 @@ def neues_objekt(angebot):
         flaeche = float(random.randint(45, 180))
         einheiten.insert(0, {"einheit_id": "L01", "typ": "gewerbe", "lage": "EG",
                              "nutzung": random.choice(NUTZUNGEN), "nutzflaeche": flaeche,
-                             "umsatzsteuer_option": ja(0.7), "markt_kalt": euro(flaeche * random.uniform(11, 18))})
+                             "umsatzsteuer_option": ja(0.7), "markt_kalt": euro(flaeche * random.uniform(11, 18)),
+                             "markt_nebenkosten": euro(flaeche * random.uniform(2.5, 3.5))})
 
     strasse = f"{a['adresse']['strasse']} {a['adresse']['hausnummer']}"
     objekt = {
@@ -408,7 +409,7 @@ def vorgaenge_fuer_objekt(objekt, vertraege):
 
             # Mietminderung als eigener Vorgang, verweist auf den auslösenden Schaden
             if minderung and ja(0.35):
-                m = basis("mietminderung", objekt, tag + timedelta(days=random.randint(1, 7)), v)
+                m = basis("mietminderung", objekt, min(HEUTE, tag + timedelta(days=random.randint(1, 7))), v)
                 m.update({"titel": f"Mietminderung wegen {kat}", "schaden_id": doc["_id"],
                           "quote_prozent": random.choice([10, 15, 20, 25, 30]),
                           "zeitraum": {"von": tag, "bis": tag + timedelta(days=random.randint(14, 120))},
@@ -447,7 +448,7 @@ def vorgaenge_fuer_objekt(objekt, vertraege):
     # Wiederkehrende Fristen je Objekt (die nächsten Fälligkeiten)
     for titel, monat in [("Nebenkostenabrechnung erstellen", 12), ("Rauchmelderwartung", 3), ("Heizungswartung", 9)]:
         faellig = datetime(HEUTE.year + (monat < HEUTE.month), monat, 28 if monat != 12 else 31)
-        doc = basis("frist", objekt, faellig - timedelta(days=60))
+        doc = basis("frist", objekt, HEUTE - timedelta(days=random.randint(0, 30)))
         doc.update({"titel": titel, "faellig_am": faellig, "wiederkehrend": "jährlich", "status": "offen"})
         out.append(doc)
     return out

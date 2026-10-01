@@ -50,6 +50,8 @@ def objekte(kreis: str | None = None, typ: str | None = None, q: str | None = No
             "wohnungen": _anzahl(typ="wohnung"),
             "leer": _anzahl(status="leer"),
             "offene_vorgaenge": {"$ifNull": [{"$first": "$offen.n"}, 0]},
+            # Nur Typ und Status je Einheit, für die Kurzdarstellung in der Liste
+            "einheiten_kurz": {"$map": {"input": "$einheiten", "in": {"typ": "$$this.typ", "status": "$$this.status"}}},
         }},
     ])
     return {"gesamt": gesamt, "seite": seite, "daten": jsonify(list(daten))}

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titel %}{% endblock %} · Mietverwaltung</title>
+<link rel="stylesheet" href="/static/app.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2317514C' stroke-width='2'%3E%3Cpath d='M3 11 12 4l9 7'/%3E%3Cpath d='M5 10v10h14V10'/%3E%3C/svg%3E">
+</head>
+<body>
+<header class="kopf">
+  <div class="kopf-innen">
+    <a href="/" class="marke">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9FC3BC" stroke-width="1.6" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+      Mietverwaltung
+    </a>
+    <nav class="hauptnav" aria-label="Hauptnavigation">
+      {% for ziel, name, key in [("/", "Übersicht", "uebersicht"), ("/objekte", "Objekte", "objekte"), ("/vorgaenge", "Vorgänge", "vorgaenge"), ("/markt", "Markt", "markt"), ("/labor", "NoSQL-Labor", "labor")] %}
+      <a href="{{ ziel }}"{% if aktiv == key %} aria-current="page"{% endif %}>{{ name }}</a>
+      {% endfor %}
+    </nav>
+    <div class="status" aria-live="polite" aria-label="Zustand der Datenbanken">
+      {% for k in ["mongo1", "mongo2", "mongo3"] %}
+      <span data-knoten="{{ k }}"><span class="punkt unklar"></span>{{ k }} <b class="rolle" style="font-weight:400">?</b></span>
+      {% endfor %}
+      <span class="trenner"></span>
+      <span data-redis><span class="punkt redis"></span>redis</span>
+      <button type="button" class="spur-schalter" data-spur-schalter aria-pressed="true" title="Abfragen unter den Bereichen ein- oder ausblenden">Spur</button>
+    </div>
+  </div>
+</header>
+{% block inhalt %}{% endblock %}
+<script src="/static/app.js"></script>
+{% block skripte %}{% endblock %}
+</body>
+</html>

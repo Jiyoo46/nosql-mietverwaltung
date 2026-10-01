@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% from "_cache.html" import herkunft %}
+{% block titel %}Übersicht{% endblock %}
+{% block inhalt %}
+<main class="seite">
+
+<div class="kopfzeile">
+  <div>
+    <div class="kicker">Bestand am {{ d.stand|datum }}</div>
+    <h1 class="titel">Übersicht</h1>
+    <p class="lead">{{ d.objekte }} Objekte mit {{ einheiten_gesamt|zahl }} Einheiten in {{ kreise|length }} Kreisen der Region Stuttgart</p>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    {{ herkunft(cache) }}
+    <button type="button" class="knopf" data-neu-berechnen>Neu berechnen</button>
+  </div>
+</div>
+
+<section class="kpis" aria-label="Kennzahlen">
+  <div class="kpi">
+    <div class="grau">Soll-Kaltmiete pro Monat</div>
+    <div class="kpi-wert">{{ d.mieten_monat.kalt|euro(0) }}</div>
+    <div class="grau">zzgl. {{ d.mieten_monat.nebenkosten|euro(0) }} Nebenkosten-Vorauszahlungen</div>
+  </div>
+  <div class="kpi">
+    <div class="grau">Leerstand Wohnungen</div>
+    <div class="kpi-wert">{{ d.leerstandsquote_wohnungen|zahl(1) }} %</div>
+    <div class="grau">{{ wohnungen.gesamt - wohnungen.vermietet }} von {{ wohnungen.gesamt }} Wohnungen frei</div>
+  </div>
+  <div class="kpi">
+    <div class="grau">Laufende Verträge</div>
+    <div class="kpi-wert">{{ d.mieten_monat.vertraege|zahl }}</div>
+    <div class="grau">davon {{ d.mieten_monat.gekuendigt }} gekündigt</div>
+  </div>
+  <div class="kpi">
+    <div class="grau">Offene Schäden</div>
+    <div class="kpi-wert">{{ prio.values()|sum }}</div>
+    <div class="grau"><span class="rost" style="font-weight:500">{{ prio.get("hoch", 0) }} hoch</span> · {{ prio.get("mittel", 0) }} mittel · {{ prio.get("niedrig", 0) }} niedrig</div>
+  </div>
+</section>
+
+<div class="raster">
+
+  <section class="karte span2">
+    <div class="karte-kopf" style="display:block">
+      <h2>Bestandsmiete und Angebotsmiete je Kreis</h2>
+      <p>Median Kaltmiete in €/m². Angebote: 16.040 echte Inserate aus ImmoScout24 (2018–2020).</p>
+    </div>
+    <div class="karte-inhalt stapel" style="gap:14px">
+      <div class="legende"><span><span class="farbe bestand"></span>Bestand</span><span><span class="farbe angebot"></span>Angebote</span></div>
+      {% for k in kreise %}
+      <div class="paar">
+        <div class="name">{{ k.kreis }}<div>{{ k.wohnungen }} Wohnungen · {{ k.angebote|zahl }} Angebote</div></div>
+        <div class="balken bestand" style="width: {{ k.breite_bestand }}%"></div><div class="mono klein">{{ k.bestand_median_qm|zahl(2) }}</div>
+        <div class="balken angebot" style="width: {{ k.breite_markt }}%"></div><div class="mono klein">{{ k.markt_median_qm|zahl(2) }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="spur">vertraege → $lookup objekte → eingebettete Einheit per $filter → $median · angebote → $group nach Kreis</div>
+  </section>
+
+  <section class="karte">
+    <div class="karte-kopf" style="display:block">
+      <h2>Einheiten</h2>
+      <p>Vier Typen, eingebettet in die Objekte</p>
+    </div>
+    <div class="karte-inhalt stapel">
+      {% for e in einheiten %}
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:14px"><span style="font-weight:500">{{ e.name }}</span><span class="mono">{{ e.vermietet }} / {{ e.gesamt }}</span></div>
+        <div class="fortschritt"><div style="width: {{ (e.vermietet / e.gesamt * 100) if e.gesamt else 0 }}%"></div></div>
+      </div>
+      {% endfor %}
+      <div class="grau klein">Balken: vermietet / gesamt</div>
+    </div>
+    <div class="spur">objekte → $unwind einheiten → $group typ, status</div>
+  </section>
+
+  <section class="karte span2">
+    <div class="karte-kopf" style="display:block">
+      <h2>Schadensmeldungen der letzten zwölf Monate</h2>
+      <p>{{ schaeden_summe }} Meldungen, Kosten {{ kosten_summe|euro(0) }} (Rechnung oder Schätzung)</p>
+    </div>
+    <div class="karte-inhalt">
+      <div class="saeulen">
+        {% for m in monate %}
+        <div class="saeule" title="{{ m.schluessel }}: {{ m.anzahl }} Meldungen, {{ m.kosten|euro(0) }}"><span>{{ m.anzahl }}</span><div style="height: {{ m.hoehe }}%"></div></div>
+        {% endfor %}
+      </div>
+      <div class="achse">{% for m in monate %}<span>{{ m.schluessel|kurzmonat }}</span>{% endfor %}</div>
+    </div>
+    <div class="spur">vorgaenge → $facet (4 Auswertungen in einem Durchlauf) → $dateToString %Y-%m</div>
+  </section>
+
+  <section class="karte">
+    <div class="karte-kopf"><h2>Offene Vorgänge</h2></div>
+    <div style="padding:12px 22px 8px">
+      {% for x in offen %}
+      <a href="/vorgaenge?typ={{ x._id }}" style="display:flex;justify-content:space-between;padding:8px 0;color:inherit;text-decoration:none;{% if not loop.last %}border-bottom:1px solid var(--linie-2){% endif %}"><span>{{ VORGANG_TYP[x._id] }}</span><span class="mono">{{ x.anzahl }}</span></a>
+      {% endfor %}
+    </div>
+    {% if frist %}
+    <div class="frist">
+      <div class="kicker" style="color:var(--petrol);font-size:12px">Nächste Frist</div>
+      <div style="font-weight:500;margin-top:2px">{{ frist._id }}</div>
+      <div class="klein" style="color:var(--grau-2)">{{ frist.anzahl }} Objekte · fällig {{ frist.naechste|datum }}</div>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="karte span3">
+    <div class="karte-kopf"><h2>Objekte mit den meisten offenen Vorgängen</h2></div>
+    <div class="tabelle-rahmen">
+      <table>
+        <thead><tr><th scope="col">Objekt</th><th scope="col">Ort</th><th scope="col" class="rechts">Offen</th></tr></thead>
+        <tbody>
+          {% for t in d.top_objekte_offene_vorgaenge %}
+          <tr><td><a href="/objekte/{{ t.objekt_id }}" style="font-weight:500">{{ t.bezeichnung }}</a></td><td>{{ t.ort }}</td><td class="rechts mono">{{ t.offen }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="spur">Gesamtes Dashboard: 1 Redis-Key dashboard:kennzahlen · Antwort {{ "aus Redis" if cache.quelle == "redis" else "aus MongoDB" }} in {{ cache.dauer_ms|zahl(1) }} ms · invalidiert bei jedem Schreibzugriff</div>
+  </section>
+
+</div>
+</main>
+{% endblock %}
