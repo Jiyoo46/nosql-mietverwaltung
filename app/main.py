@@ -1,20 +1,9 @@
 from fastapi import FastAPI
 
-from app.db import mongo, redis
+from app.routers import dashboard, markt, mieter, objekte, system, vertraege, vorgaenge
 
-app = FastAPI(title="Mietverwaltung (NoSQL-Projekt)")
+app = FastAPI(title="Mietverwaltung (NoSQL-Projekt)",
+              description="MongoDB-Replica-Set als Document Store, Redis als Cache.")
 
-
-@app.get("/health")
-def health():
-    """Zustand der Infrastruktur: Rolle jedes Replica-Set-Knotens und Redis-Erreichbarkeit."""
-    status = mongo.admin.command("replSetGetStatus")
-    members = [
-        {"host": m["name"], "state": m["stateStr"], "health": m["health"]}
-        for m in status["members"]
-    ]
-    return {
-        "replica_set": status["set"],
-        "members": members,
-        "redis": redis.ping(),
-    }
+for r in (system, dashboard, objekte, vertraege, mieter, vorgaenge, markt):
+    app.include_router(r.router)

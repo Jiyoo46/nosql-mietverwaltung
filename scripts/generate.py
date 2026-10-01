@@ -149,7 +149,7 @@ def neues_objekt(angebot):
                              "umsatzsteuer_option": ja(0.7), "markt_kalt": euro(flaeche * random.uniform(11, 18))})
 
     strasse = f"{a['adresse']['strasse']} {a['adresse']['hausnummer']}"
-    return {
+    objekt = {
         "_id": ObjectId(),
         "bezeichnung": strasse if typ == "Eigentumswohnung" else f"{'MFH' if typ == 'Mehrfamilienhaus' else 'WGH'} {strasse}",
         "typ": typ,
@@ -161,6 +161,8 @@ def neues_objekt(angebot):
         "quelle": {"angebot_id": a["_id"], "erfasst": a["erfasst"]},
         "einheiten": einheiten,
     }
+    # Fehlende Angaben aus dem Angebot weglassen statt als null zu speichern
+    return {k: v for k, v in objekt.items() if v is not None}
 
 
 # ---------------------------------------------------------------- Übergabeprotokolle

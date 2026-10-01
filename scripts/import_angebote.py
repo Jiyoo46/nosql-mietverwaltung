@@ -153,7 +153,8 @@ def main():
     for i in range(0, len(docs), 2000):
         db.angebote.insert_many(docs[i : i + 2000], ordered=False)
 
-    db.angebote.create_index([("adresse.plz", ASCENDING)])
+    # Unterstützt den Marktvergleich: gleiche PLZ, ähnliche Wohnfläche
+    db.angebote.create_index([("adresse.plz", ASCENDING), ("wohnflaeche", ASCENDING)])
     db.angebote.create_index([("adresse.kreis", ASCENDING), ("miete.kalt", ASCENDING)])
 
     print(f"{len(bw)} Angebote in BW, {len(bw) - len(docs)} aussortiert, {db.angebote.count_documents({})} importiert")
