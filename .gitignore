@@ -1,0 +1,9 @@
+# Kaggle-Rohdaten: nur für Forschungszwecke lizenziert, nicht veröffentlichen
+data/raw/*
+!data/raw/.gitkeep
+data/processed/
+__pycache__/
+*.pyc
+.venv/
+.env
+.DS_Store

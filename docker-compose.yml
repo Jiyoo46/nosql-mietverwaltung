@@ -1,0 +1,68 @@
+# Lokale NoSQL-Umgebung: MongoDB-Replica-Set (3 Knoten) + Redis + FastAPI-App
+x-mongo: &mongo
+  image: mongo:8.0
+  # Cache je Knoten klein halten: drei Knoten teilen sich den Docker-Speicher
+  command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--wiredTigerCacheSizeGB", "0.25"]
+  restart: unless-stopped
+
+services:
+  mongo1:
+    <<: *mongo
+    container_name: mongo1
+    ports: ["27017:27017"]
+    volumes: [mongo1:/data/db]
+    # Initialisiert das Replica Set beim ersten Start, danach nur Statusprüfung
+    healthcheck:
+      test: >
+        mongosh --quiet --eval "try { rs.status().ok } catch (e) {
+          rs.initiate({_id: 'rs0', members: [
+            {_id: 0, host: 'mongo1:27017', priority: 2},
+            {_id: 1, host: 'mongo2:27017', priority: 1},
+            {_id: 2, host: 'mongo3:27017', priority: 1}
+          ]}).ok }"
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 5s
+  mongo2:
+    <<: *mongo
+    container_name: mongo2
+    ports: ["27018:27017"]
+    volumes: [mongo2:/data/db]
+  mongo3:
+    <<: *mongo
+    container_name: mongo3
+    ports: ["27019:27017"]
+    volumes: [mongo3:/data/db]
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    # Reiner Cache: Speicher begrenzen, bei Bedarf am wenigsten genutzte Keys verdrängen
+    command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    ports: ["6379:6379"]
+    restart: unless-stopped
+
+  app:
+    build: .
+    container_name: app
+    ports: ["8000:8000"]
+    environment:
+      MONGO_URI: mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0
+      MONGO_DB: mietverwaltung
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./app:/code/app
+      - ./scripts:/code/scripts
+      - ./data:/code/data
+    depends_on:
+      mongo1: {condition: service_healthy}
+      mongo2: {condition: service_started}
+      mongo3: {condition: service_started}
+      redis: {condition: service_started}
+    restart: unless-stopped
+
+volumes:
+  mongo1:
+  mongo2:
+  mongo3:
