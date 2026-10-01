@@ -49,8 +49,8 @@ def _vorgaenge():
             {"$match": {"typ": "schaden", "status": {"$ne": "erledigt"}}},
             {"$group": {"_id": "$prioritaet", "anzahl": {"$sum": 1}}},
         ],
-        "fristen_90_tage": [
-            {"$match": {"typ": "frist", "status": "offen", "faellig_am": {"$lte": heute + timedelta(days=90)}}},
+        "fristen_120_tage": [
+            {"$match": {"typ": "frist", "status": "offen", "faellig_am": {"$lte": heute + timedelta(days=120)}}},
             {"$group": {"_id": "$titel", "anzahl": {"$sum": 1}, "naechste": {"$min": "$faellig_am"}}},
             {"$sort": {"naechste": 1}},
         ],

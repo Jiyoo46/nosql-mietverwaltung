@@ -38,7 +38,8 @@ def objekte(kreis: str | None = None, typ: str | None = None, q: str | None = No
             "from": "vorgaenge",
             "let": {"id": "$_id"},
             "pipeline": [
-                {"$match": {"$expr": {"$and": [{"$eq": ["$objekt_id", "$$id"]}, {"$ne": ["$status", "erledigt"]}]}}},
+                {"$match": {"$expr": {"$and": [{"$eq": ["$objekt_id", "$$id"]}, {"$ne": ["$status", "erledigt"]},
+                                               {"$ne": ["$typ", "frist"]}]}}},
                 {"$count": "n"},
             ],
             "as": "offen",

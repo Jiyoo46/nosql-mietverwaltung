@@ -242,7 +242,7 @@ def vertraege_fuer_einheit(objekt, einheit, mieter, aktive_mieter_im_haus):
     """Vertragshistorie einer Einheit von Verwaltungsbeginn bis heute."""
     vertraege = []
     beginn = objekt["verwaltet_seit"]
-    leerstand_am_ende = ja(0.05)
+    leerstand_am_ende = ja(0.03)
     zaehler = random.randint(1000, 5000)
     dauer_jahre = {"wohnung": (2, 9), "gewerbe": (5, 12), "garage": (3, 14), "stellplatz": (3, 14)}[einheit["typ"]]
 
@@ -342,11 +342,11 @@ KORRESPONDENZ = [
 
 def status_nach_alter(tag):
     tage = (HEUTE - tag).days
-    if tage > 120:
+    if tage > 180:
         return "erledigt"
-    if tage > 30:
-        return random.choices(["erledigt", "in_bearbeitung"], [70, 30])[0]
-    return random.choices(["offen", "in_bearbeitung", "erledigt"], [50, 30, 20])[0]
+    if tage > 45:
+        return random.choices(["erledigt", "in_bearbeitung"], [60, 40])[0]
+    return random.choices(["offen", "in_bearbeitung", "erledigt"], [60, 30, 10])[0]
 
 
 def verlauf(tag, status, eintraege):
@@ -380,11 +380,9 @@ def vorgaenge_fuer_objekt(objekt, vertraege):
         laufzeit_ende = min(v.get("ende", HEUTE), HEUTE)
         jahre_laufzeit = max(0.2, (laufzeit_ende - v["beginn"]).days / 365)
 
-        # Schäden: im Schnitt etwa einer pro Wohnung alle zwei Jahre, dazu aktuelle in laufenden Verträgen
+        # Schäden: im Schnitt etwa einer pro Wohnung alle zwei Jahre
         tage = [datum(v["beginn"], laufzeit_ende)
                 for _ in range(int(jahre_laufzeit * random.uniform(0.2, 0.8)) + (1 if ja(0.3) else 0))]
-        if v["status"] != "beendet" and ja(0.1):
-            tage.append(datum(HEUTE - timedelta(days=45), HEUTE))
         for tag in tage:
             kat, gewerk, prio, kmin, kmax, versicherung, minderung = random.choice(
                 [s for s in SCHAEDEN if hat_aufzug or s[0] != "Aufzug ausgefallen"])
@@ -522,8 +520,8 @@ def collections_anlegen():
 def main():
     # Bestand: echte Angebote mit vollständiger Adresse aus der Region, je Adresse nur eines
     kandidaten = list(db.angebote.find(
-        # Hausnummer muss eine Ziffer enthalten (Platzhalter wie "--" ausschließen)
-        {"adresse.kreis": {"$in": KREISE}, "adresse.hausnummer": {"$regex": "[0-9]"}},
+        # Hausnummer muss mit einer Ziffer ab 1 beginnen (Platzhalter wie "--" oder "0" ausschließen)
+        {"adresse.kreis": {"$in": KREISE}, "adresse.hausnummer": {"$regex": "^[1-9]"}},
         sort=[("_id", ASCENDING)],
     ))
     gesehen, eindeutig = set(), []

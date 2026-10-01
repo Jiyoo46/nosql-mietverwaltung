@@ -105,10 +105,12 @@ def zu_dokument(r):
         "erfasst": ERFASST[r.date],
         "adresse": {
             # ImmoScout blendet die Adresse aus, wenn der Anbieter sie nicht freigibt
-            "strasse": wert(r.streetPlain) and wert(r.streetPlain).replace("_", " "),
+            "strasse": wert(r.streetPlain) and " ".join(wert(r.streetPlain).replace("_", " ").split()),
             "hausnummer": wert(r.houseNumber),
             "plz": f"{int(r.geo_plz):05d}",
-            "ort": ort(wert(r.regio3)),
+            # Kreisfreie Städte: regio3 ist der Stadtteil, nicht der Ort
+            "ort": ort(wert(r.regio3)) if r.regio2.endswith("_Kreis") else ort(wert(r.regio2)),
+            "stadtteil": None if r.regio2.endswith("_Kreis") else ort(wert(r.regio3)),
             "kreis": ort(wert(r.regio2)),
             "bundesland": "Baden-Württemberg",
         },
