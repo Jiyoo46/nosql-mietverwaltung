@@ -1,6 +1,8 @@
 """Live-Experimente für die Präsentation. Jedes Ergebnis ist gemessen, nichts ist vorbereitet."""
+import inspect
 import time
 from datetime import date, datetime
+from pathlib import Path
 from typing import Literal
 
 import docker
@@ -10,7 +12,9 @@ from pymongo import ReadPreference, ReturnDocument
 from pymongo.errors import PyMongoError
 from pymongo.write_concern import WriteConcern
 
+from app import cache as cache_modul
 from app.cache import cached
+from app.config import settings
 from app.db import db, redis
 from app.routers import dashboard, mieter, system, vertraege, vorgaenge
 from app.util import jsonify
@@ -266,3 +270,117 @@ def reset():
     for name in ("cache", "invalidierung"):
         redis.delete(f"einstellung:{name}")
     return {"dauer_s": round(time.perf_counter() - t, 1)}
+
+
+# ---------------------------------------------------------------- Code zu den Experimenten
+
+PROJEKT = Path(__file__).resolve().parents[2]  # /code im Container
+
+
+def _ausschnitt(titel, datei, zeilen, start, hinweis, markiert):
+    """Ein Code-Ausschnitt mit Fundstelle. Markiert werden Zeilen, die einen der Suchtexte enthalten."""
+    rel = Path(datei).resolve().relative_to(PROJEKT).as_posix()
+    zeilen = [z.rstrip("\n") for z in zeilen]
+    while zeilen and not zeilen[-1].strip():
+        zeilen.pop()
+    # Der Rechnerpfad ist absolut und beginnt selbst mit „/“: vscode://file/Users/…/datei.py:zeile
+    host = "/" + settings.host_projekt_dir.strip("/")
+    vscode = f"vscode://file{host}/{rel}:{start}" if settings.host_projekt_dir else None
+    return {"titel": titel, "datei": rel, "zeile": start, "code": "\n".join(zeilen), "hinweis": hinweis,
+            "markiert": [i for i, z in enumerate(zeilen) if any(m in z for m in markiert)], "vscode": vscode}
+
+
+def funktion(fn, titel, hinweis, markiert=()):
+    """Quelltext einer Funktion, live gelesen: gezeigt wird genau der Code, der beim Klick läuft."""
+    zeilen, start = inspect.getsourcelines(fn)
+    return _ausschnitt(titel, inspect.getsourcefile(fn), zeilen, start, hinweis, markiert)
+
+
+def bereich(datei, beginn, ende, titel, hinweis, markiert=()):
+    """Zeilen ab der ersten mit `beginn` bis vor die erste folgende mit `ende` (für Code außerhalb von Funktionen)."""
+    pfad = PROJEKT / datei
+    zeilen = pfad.read_text(encoding="utf-8").splitlines()
+    von = next(i for i, z in enumerate(zeilen) if beginn in z)
+    bis = next(i for i in range(von + 1, len(zeilen)) if ende in zeilen[i])
+    return _ausschnitt(titel, pfad, zeilen[von:bis], von + 1, hinweis, markiert)
+
+
+def _code(nr):
+    if nr == "01":
+        return [
+            funktion(failover, "Primary hart beenden und Wahl messen",
+                     "kill() beendet den Container wie ein Absturz. Danach wird gewartet, bis ein anderer Knoten "
+                     "PRIMARY meldet, und ohne Neustart der App geschrieben.",
+                     ["kill()", "p != alt", "insert_one"]),
+            bereich("app/db.py", "# Ein Client je Prozess", "redis = Redis", "Ein Client für alle drei Knoten",
+                    "Die Verbindungs-URI nennt alle drei Knoten (docker-compose.yml). Der Treiber erkennt den neuen "
+                    "Primary selbst; während der Wahl warten Anfragen bis zu 15 s.",
+                    ["serverSelectionTimeoutMS"]),
+            funktion(system.replica_status, "Rollen der Knoten für die Statusleiste",
+                     "Gelesen mit NEAREST, damit die Leiste auch funktioniert, solange es keinen Primary gibt.",
+                     ["ReadPreference.NEAREST"]),
+        ]
+    if nr == "02":
+        return [
+            funktion(cache_modul.cached, "Cache-aside",
+                     "Erst Redis fragen. Bei einem Fehltreffer rechnet MongoDB, das Ergebnis wird mit TTL abgelegt.",
+                     ["redis.get", "redis.set", "berechnen()"]),
+            funktion(cache_modul.invalidieren, "Invalidierung bei Schreibzugriffen",
+                     "Schreibende Endpunkte löschen alle passenden Keys, z. B. dashboard:*. Ohne diesen Schritt "
+                     "bleibt der Cache bis zum Ablauf der TTL veraltet.",
+                     ["scan_iter", "redis.delete"]),
+            funktion(dashboard.dashboard, "Das Dashboard nutzt den Cache",
+                     "Key dashboard:kennzahlen, TTL 300 s; berechnen() enthält die Aggregationen.",
+                     ["cached("]),
+        ]
+    if nr == "03":
+        return [
+            funktion(konsistenz, "Schreiben und sofort lesen, 50-mal",
+                     "Write Concern und Read Preference werden je Collection-Objekt gesetzt, also pro Abfrage wählbar. "
+                     "Veraltet ist ein Lesezugriff, der einen kleineren Zählerstand sieht als gerade geschrieben.",
+                     ["WriteConcern(", "ReadPreference.", "veraltet += 1"]),
+        ]
+    if nr == "04":
+        return [
+            funktion(index_vergleich, "explain() mit und ohne Index",
+                     "hint {$natural: 1} erzwingt den Vollscan (COLLSCAN). Verglichen wird totalDocsExamined, "
+                     "nicht die Zeit, weil die Zahl gelesener Dokumente stabil ist.",
+                     ["$natural", "adresse.plz_1_wohnflaeche_1", "totalDocsExamined"]),
+            bereich("scripts/import_angebote.py", "# Unterstützt den Marktvergleich", "print(f\"", "Index anlegen",
+                    "Compound-Index nach der ESR-Regel: zuerst das Gleichheitsfeld (PLZ), dann der Bereich (Wohnfläche).",
+                    ["create_index"]),
+        ]
+    if nr == "05":
+        return [
+            funktion(vertraege.mieterwechsel, "Mieterwechsel als Transaktion",
+                     "Alle fünf Schreibvorgänge erhalten dieselbe session. with_transaction committet nur, wenn "
+                     "schritte() ohne Fehler durchläuft; der simulierte Fehler nach Schritt 3 löst den Rollback aus.",
+                     ["with_transaction", "raise SimulierterFehler", "array_filters", "session=session)"]),
+        ]
+    if nr == "06":
+        return [
+            funktion(mieter.name_aendern, "Namensänderung mit und ohne Pflege der Kopien",
+                     "Der Name steht im Mieter und als Kopie in vertraege.mieter_namen. Die Update-Pipeline setzt "
+                     "den neuen Namen genau an der Position, an der die Mieter-ID steht.",
+                     ["kopien_aktualisieren", "$map", "with_transaction"]),
+        ]
+    if nr == "07":
+        return [
+            bereich("scripts/generate.py", "VALIDATOREN = {", "def collections_anlegen", "$jsonSchema-Validatoren",
+                    "Pflichtfelder, erlaubte Werte und Typen. Für Mieter verlangt oneOf je nach Art Namen oder "
+                    "Firmennamen. Zusätzliche Felder bleiben erlaubt.",
+                    ["\"required\"", "oneOf"]),
+            funktion(vorgaenge.roh_einfuegen, "Einfügen ohne Prüfung in der App",
+                     "Die App reicht das Dokument unverändert weiter. Die Ablehnung kommt von MongoDB selbst (Code 121).",
+                     ["insert_one", "WriteError"]),
+            funktion(schema, "Feldanzahl je Inserat",
+                     "$objectToArray macht aus dem Dokument eine Liste seiner Felder, $size zählt sie.",
+                     ["$objectToArray", "$exists"]),
+        ]
+    raise HTTPException(404, "Experiment unbekannt")
+
+
+@router.get("/code/{nr}")
+def code(nr: str):
+    """Quelltext hinter einem Experiment, live aus den Dateien gelesen."""
+    return {"nr": nr, "ausschnitte": _code(nr)}

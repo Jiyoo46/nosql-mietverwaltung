@@ -235,3 +235,84 @@ $("[data-reset]").addEventListener("click", (e) =>
     $("[data-reset-info]").textContent = `wiederhergestellt in ${zahl(r.dauer_s, 1)} s`;
     cacheStatus();
   }));
+
+// ---------- Code hinter den Experimenten ----------
+// Kleine Python-Hervorhebung ohne Bibliothek (die App läuft offline): Schlüsselwörter, Strings, Kommentare, Dekoratoren
+const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const TOKEN = /("""[\s\S]*?(?:"""|$)|f?"(?:\\.|[^"\\])*"|f?'(?:\\.|[^'\\])*'|#.*$|@\w+(?:\.\w+)*|\b(?:def|return|if|elif|else|for|while|in|not|and|or|is|None|True|False|try|except|finally|raise|with|as|import|from|class|lambda|pass|break|continue|global)\b)/g;
+
+function zeileFaerben(text, zustand) {
+  let html = "";
+  if (zustand.docstring) {
+    const ende = text.indexOf('"""');
+    if (ende < 0) return `<span class="s">${esc(text)}</span>`;
+    html = `<span class="s">${esc(text.slice(0, ende + 3))}</span>`;
+    text = text.slice(ende + 3);
+    zustand.docstring = false;
+  }
+  let pos = 0;
+  for (const m of text.matchAll(TOKEN)) {
+    const t = m[0];
+    html += esc(text.slice(pos, m.index));
+    const art = t.startsWith("#") ? "c" : t.startsWith("@") ? "d" : /^f?["']/.test(t) ? "s" : "k";
+    html += `<span class="${art}">${esc(t)}</span>`;
+    if (t.startsWith('"""') && (t.length < 6 || !t.endsWith('"""'))) zustand.docstring = true;
+    pos = m.index + t.length;
+  }
+  return html + esc(text.slice(pos));
+}
+
+function ausschnittZeigen(a) {
+  const box = document.createElement("div");
+  box.className = "ausschnitt";
+  const kopf = document.createElement("div");
+  kopf.className = "ausschnitt-kopf";
+  const titel = document.createElement("b");
+  titel.textContent = a.titel;
+  const fundstelle = document.createElement("span");
+  fundstelle.className = "fundstelle";
+  fundstelle.textContent = `${a.datei}:${a.zeile}`;
+  const links = document.createElement("span");
+  links.style.cssText = "display:flex;gap:12px;align-items:baseline;flex-wrap:wrap";
+  links.append(fundstelle);
+  if (a.vscode) {
+    const vs = document.createElement("a");
+    vs.href = a.vscode;
+    vs.textContent = "in VS Code öffnen";
+    links.append(vs);
+  }
+  kopf.append(titel, links);
+  const hinweis = document.createElement("p");
+  hinweis.textContent = a.hinweis;
+  const pre = document.createElement("pre");
+  pre.className = "quelltext";
+  pre.style.setProperty("--start", a.zeile - 1);
+  const zustand = { docstring: false };
+  const markiert = new Set(a.markiert);
+  pre.innerHTML = a.code.split("\n")
+    .map((z, i) => `<span class="z${markiert.has(i) ? " mark" : ""}">${zeileFaerben(z, zustand) || " "}</span>`)
+    .join("");
+  box.append(kopf, hinweis, pre);
+  return box;
+}
+
+document.querySelectorAll("details[data-code]").forEach((d) =>
+  d.addEventListener("toggle", async () => {
+    const summary = d.querySelector("summary");
+    summary.textContent = d.open ? "Code ausblenden" : "Code zeigen";
+    d.closest(".karte").classList.toggle("code-offen", d.open);
+    if (!d.open) return;
+    // Code nach oben holen: Er soll beim Aufklappen sofort lesbar sein
+    const hochholen = () => summary.scrollIntoView({ block: "start", behavior: "smooth" });
+    if (d.dataset.geladen) return hochholen();
+    const ziel = d.querySelector("[data-code-inhalt]");
+    try {
+      const r = await api("GET", `/api/labor/code/${d.dataset.code}`);
+      ziel.textContent = "";
+      r.ausschnitte.forEach((a) => ziel.append(ausschnittZeigen(a)));
+      d.dataset.geladen = "1";
+      hochholen();
+    } catch (e) {
+      ziel.textContent = "Code konnte nicht geladen werden: " + e.message;
+    }
+  }));

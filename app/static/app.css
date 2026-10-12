@@ -213,6 +213,31 @@ dialog h2 { font-size: 19px; font-weight: 600; }
 .knoten .rolle { font-size: 20px; font-weight: 600; margin-top: 8px; color: var(--petrol); }
 .knoten .weg .rolle { color: var(--rost); }
 .protokoll { padding: 12px 14px; background: var(--papier); font: 12px var(--mono); color: var(--grau-2); white-space: pre-line; border-radius: 2px; min-height: 44px; }
+
+/* Code hinter den Experimenten: dunkle Fläche wie pre.dokument, markierte Zeilen in Redis-Rostbraun */
+details.code-ansicht { border-top: 1px solid var(--linie); }
+/* Mit offenem Code nimmt die Karte die ganze Breite ein, damit die Zeilen lesbar bleiben */
+.labor > .karte.code-offen { grid-column: 1 / -1 !important; }
+details.code-ansicht > summary { cursor: pointer; padding: 10px 22px; min-height: 40px; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--petrol); list-style: none; }
+details.code-ansicht > summary::-webkit-details-marker { display: none; }
+details.code-ansicht > summary::before { content: "›"; font-size: 16px; line-height: 1; transition: transform .15s; }
+details.code-ansicht[open] > summary::before { transform: rotate(90deg); }
+details.code-ansicht[open] > summary { color: var(--petrol-tief); }
+.code-inhalt { padding: 0 22px 18px; display: flex; flex-direction: column; gap: 16px; font-size: 13px; color: var(--grau); }
+.ausschnitt { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ausschnitt-kopf { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
+.ausschnitt-kopf b { color: var(--tinte); font-weight: 600; font-size: 14px; }
+.ausschnitt-kopf .fundstelle { font: 12px var(--mono); color: var(--grau-2); }
+.ausschnitt-kopf a { font-size: 12px; white-space: nowrap; }
+.ausschnitt p { margin: 0; }
+pre.quelltext { margin: 0; padding: 10px 0; background: var(--petrol-tief); color: #E3EEEB; font: 12.5px/1.6 var(--mono); overflow: auto; max-height: 460px; border-radius: 2px; counter-reset: zeile var(--start); }
+pre.quelltext .z { display: block; padding: 0 16px 0 0; white-space: pre; border-left: 3px solid transparent; }
+pre.quelltext .z::before { counter-increment: zeile; content: counter(zeile); display: inline-block; width: 3.4em; padding-right: 1em; text-align: right; color: #6E918B; user-select: none; }
+pre.quelltext .z.mark { background: rgba(194, 101, 42, .24); border-left-color: var(--redis); }
+pre.quelltext .k { color: #9FC3BC; font-weight: 500; }
+pre.quelltext .s { color: #EDB98F; }
+pre.quelltext .c { color: #86A9A3; font-style: italic; }
+pre.quelltext .d { color: #F2D58A; }
 .vergleich { display: grid; grid-template-columns: 90px 1fr 84px; gap: 8px 12px; align-items: center; font-size: 14px; }
 .vergleich .balken { height: 16px; min-width: 3px; transition: width .4s; }
 .messung { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }

@@ -51,6 +51,8 @@ services:
       MONGO_URI: mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0
       MONGO_DB: mietverwaltung
       REDIS_URL: redis://redis:6379/0
+      # Pfad des Projektordners auf dem Rechner, damit das Labor auf Quelldateien in VS Code verlinken kann
+      HOST_PROJEKT_DIR: ${PWD:-}
     volumes:
       - ./app:/code/app
       - ./scripts:/code/scripts

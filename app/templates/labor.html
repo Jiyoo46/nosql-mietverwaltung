@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block titel %}NoSQL-Labor{% endblock %}
 {% block inhalt %}
+{# Klappt den Quelltext hinter einem Experiment auf; der Code wird beim Öffnen live aus den Dateien gelesen #}
+{% macro code(nr) %}<details class="code-ansicht" data-code="{{ nr }}"><summary>Code zeigen</summary><div class="code-inhalt" data-code-inhalt>Lädt …</div></details>{% endmacro %}
 <main class="seite" style="gap:20px">
 
 <div class="kopfzeile">
@@ -45,6 +47,7 @@
     <div><b>Vorteil</b> · Ausfallsicherheit eingebaut, die App schreibt nach der Wahl ohne Neustart weiter.</div>
     <div><b class="preis">Preis</b> · Drei Server statt einem; bis zur Wahl (Herzschlag-Timeout 10 s) keine Schreibzugriffe.</div>
   </div>
+  {{ code('01') }}
 </section>
 
 <section class="karte">
@@ -73,6 +76,7 @@
     <div><b>Vorteil</b> · Teure Auswertungen kosten nur einmal pro TTL.</div>
     <div><b class="preis">Preis</b> · Zweites System, Invalidierung ist Handarbeit, Daten können veralten.</div>
   </div>
+  {{ code('02') }}
 </section>
 
 <section class="karte">
@@ -103,6 +107,7 @@
     <div><b>Vorteil</b> · Konsistenz gegen Tempo je Anwendungsfall abwägbar (CAP).</div>
     <div><b class="preis">Preis</b> · Die Entscheidung liegt beim Entwickler, eine falsche Wahl bleibt unbemerkt.</div>
   </div>
+  {{ code('03') }}
 </section>
 
 <section class="karte">
@@ -123,6 +128,7 @@
     <div><b>Vorteil</b> · Auch Felder in Unterdokumenten und Arrays sind indexierbar.</div>
     <div><b class="preis">Preis</b> · Wie in SQL: Speicher und langsamere Schreibzugriffe je Index.</div>
   </div>
+  {{ code('04') }}
 </section>
 
 <section class="karte">
@@ -145,6 +151,7 @@
     <div><b>Vorteil</b> · ACID über mehrere Dokumente, wenn nötig.</div>
     <div><b class="preis">Preis</b> · Nur mit Replica Set, teurer als Einzel-Updates; ein gutes Datenmodell braucht sie selten.</div>
   </div>
+  {{ code('05') }}
 </section>
 
 <section class="karte">
@@ -166,6 +173,7 @@
     <div><b>Vorteil</b> · Vertragslisten ohne Lookup auf die Mieter.</div>
     <div><b class="preis">Preis</b> · Jede Änderung muss alle Kopien finden; SQL normalisiert und hat das Problem nicht.</div>
   </div>
+  {{ code('06') }}
 </section>
 
 <section class="karte span2" style="grid-column:span 2">
@@ -193,6 +201,7 @@
     <div><b>Vorteil</b> · Keine NULL-Spalten, neue Felder ohne Migration.</div>
     <div><b class="preis">Preis</b> · Struktur muss bewusst abgesichert werden ($jsonSchema), sonst wächst Wildwuchs.</div>
   </div>
+  {{ code('07') }}
 </section>
 
 </div>
