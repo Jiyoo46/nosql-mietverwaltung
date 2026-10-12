@@ -55,7 +55,7 @@ docker exec app python -m scripts.reset
 | Collection | Dokumente | Quelle |
 |---|---|---|
 | `angebote` | 16.040 | echt (ImmoScout24, Baden-Württemberg, bereinigt) |
-| `objekte` | 250 (955 eingebettete Einheiten) | Adresse und erste Wohnung echt, weitere Einheiten abgeleitet |
-| `mieter` | 2.326 | fiktiv (Personen und Firmen) |
-| `vertraege` | 1.981 | fiktiv, mit eingebetteten Mietanpassungen und Übergabeprotokollen |
-| `vorgaenge` | 11.078 | fiktiv, polymorph (Schaden, Mietminderung, Korrespondenz, Mieterhöhung, Kündigung, Frist) |
+| `objekte` | 250 (990 eingebettete Einheiten) | Adresse und erste Wohnung echt, weitere Einheiten abgeleitet |
+| `mieter` | 2.409 | fiktiv (Personen und Firmen) |
+| `vertraege` | 2.063 | fiktiv, mit eingebetteten Mietanpassungen und Übergabeprotokollen |
+| `vorgaenge` | 11.030 | fiktiv, polymorph (Schaden, Mietminderung, Korrespondenz, Mieterhöhung, Kündigung, Frist) |

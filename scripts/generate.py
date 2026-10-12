@@ -21,15 +21,16 @@ HEUTE = datetime(2026, 10, 1)
 ANZAHL_OBJEKTE = 250
 KREISE = ["Stuttgart", "Böblingen (Kreis)", "Esslingen (Kreis)", "Ludwigsburg (Kreis)", "Reutlingen (Kreis)"]
 
-random.seed(SEED)
-Faker.seed(SEED)
+# Eigener Zufallsgenerator statt des globalen random-Moduls: Im App-Prozess zieht auch PyMongo
+# Zufallszahlen (Knotenwahl bei NEAREST, z. B. für die Statusleiste) und würde die Folge verschieben
+rnd = random.Random(SEED)
 fake = Faker("de_DE")
 
 
 # ---------------------------------------------------------------- Hilfsfunktionen
 
 def datum(von, bis):
-    return von + timedelta(days=random.randint(0, max(0, (bis - von).days)))
+    return von + timedelta(days=rnd.randint(0, max(0, (bis - von).days)))
 
 
 def monatsanfang(d):
@@ -45,7 +46,7 @@ def euro(x):
 
 
 def ja(p):
-    return random.random() < p
+    return rnd.random() < p
 
 
 # ---------------------------------------------------------------- Personen
@@ -59,7 +60,7 @@ def neuer_mieter(mieter, nachname=None, firma=False):
             "art": "firma",
             "firmenname": name,
             "ansprechpartner": fake.name(),
-            "ust_id": f"DE{random.randint(100000000, 999999999)}",
+            "ust_id": f"DE{rnd.randint(100000000, 999999999)}",
             "kontakt": {"email": f"info@{slug(name)}.example", "telefon": fake.phone_number()},
             "bankverbindung": {"iban": fake.iban(), "kontoinhaber": name},
         }
@@ -116,7 +117,7 @@ def wohnung(nr, lage, flaeche, zimmer, kalt, nebenkosten, ausstattung):
 
 def neues_objekt(angebot):
     a = angebot
-    typ = random.choices(["Eigentumswohnung", "Mehrfamilienhaus", "Wohn- und Geschäftshaus"], [55, 35, 10])[0]
+    typ = rnd.choices(["Eigentumswohnung", "Mehrfamilienhaus", "Wohn- und Geschäftshaus"], [55, 35, 10])[0]
     qm_preis = a["miete"]["kalt"] / a["wohnflaeche"]
     # Fehlende oder 0-€-Nebenkosten im Angebot: übliche 2,20 €/m² ansetzen
     nk = a["miete"].get("nebenkosten") or a["wohnflaeche"] * 2.2
@@ -129,25 +130,25 @@ def neues_objekt(angebot):
     if typ != "Eigentumswohnung":
         # Weitere Wohnungen im selben Haus: aus der echten Wohnung abgeleitet
         lagen = [l for l in LAGEN if l != einheiten[0]["lage"]]
-        for nr in range(2, random.randint(3, 8) + 1):
-            flaeche = round(a["wohnflaeche"] * random.uniform(0.7, 1.3))
+        for nr in range(2, rnd.randint(3, 8) + 1):
+            flaeche = round(a["wohnflaeche"] * rnd.uniform(0.7, 1.3))
             zimmer = max(1.0, round(flaeche / 28 * 2) / 2)
             einheiten.append(wohnung(nr, lagen[nr - 2], float(flaeche), zimmer,
-                                     flaeche * qm_preis * random.uniform(0.92, 1.08), flaeche * nk_qm,
+                                     flaeche * qm_preis * rnd.uniform(0.92, 1.08), flaeche * nk_qm,
                                      a.get("ausstattung", [])))
-        for nr in range(1, random.randint(0, 4) + 1):
+        for nr in range(1, rnd.randint(0, 4) + 1):
             if ja(0.6):
                 einheiten.append({"einheit_id": f"G{nr:02d}", "typ": "garage", "nummer": nr,
-                                  "e_ladestation": ja(0.25), "markt_kalt": float(random.choice([60, 70, 80, 90, 100]))})
+                                  "e_ladestation": ja(0.25), "markt_kalt": float(rnd.choice([60, 70, 80, 90, 100]))})
             else:
                 einheiten.append({"einheit_id": f"S{nr:02d}", "typ": "stellplatz", "nummer": nr,
-                                  "ueberdacht": ja(0.4), "markt_kalt": float(random.choice([30, 40, 50]))})
+                                  "ueberdacht": ja(0.4), "markt_kalt": float(rnd.choice([30, 40, 50]))})
     if typ == "Wohn- und Geschäftshaus":
-        flaeche = float(random.randint(45, 180))
+        flaeche = float(rnd.randint(45, 180))
         einheiten.insert(0, {"einheit_id": "L01", "typ": "gewerbe", "lage": "EG",
-                             "nutzung": random.choice(NUTZUNGEN), "nutzflaeche": flaeche,
-                             "umsatzsteuer_option": ja(0.7), "markt_kalt": euro(flaeche * random.uniform(11, 18)),
-                             "markt_nebenkosten": euro(flaeche * random.uniform(2.5, 3.5))})
+                             "nutzung": rnd.choice(NUTZUNGEN), "nutzflaeche": flaeche,
+                             "umsatzsteuer_option": ja(0.7), "markt_kalt": euro(flaeche * rnd.uniform(11, 18)),
+                             "markt_nebenkosten": euro(flaeche * rnd.uniform(2.5, 3.5))})
 
     strasse = f"{a['adresse']['strasse']} {a['adresse']['hausnummer']}"
     objekt = {
@@ -183,13 +184,13 @@ def raeume(einheit):
 def uebergabe(art, tag, einheit, zaehler_basis, abnutzung):
     protokoll_raeume = []
     for name in raeume(einheit):
-        maengel = random.sample(MAENGEL, k=random.choices([0, 1, 2], [70 - abnutzung, 20 + abnutzung // 2, 10 + abnutzung // 2])[0])
+        maengel = rnd.sample(MAENGEL, k=rnd.choices([0, 1, 2], [70 - abnutzung, 20 + abnutzung // 2, 10 + abnutzung // 2])[0])
         protokoll_raeume.append({
             "name": name,
             "zustand": "einwandfrei" if not maengel else ("Gebrauchsspuren" if len(maengel) == 1 else "mangelhaft"),
             **({"maengel": maengel} if maengel else {}),
         })
-    schluessel = [{"art": "Haustür", "anzahl": 2}, {"art": "Wohnungstür", "anzahl": random.choice([2, 3])},
+    schluessel = [{"art": "Haustür", "anzahl": 2}, {"art": "Wohnungstür", "anzahl": rnd.choice([2, 3])},
                   {"art": "Briefkasten", "anzahl": 2}]
     if "keller" in einheit.get("ausstattung", []):
         schluessel.append({"art": "Keller", "anzahl": 1})
@@ -211,7 +212,7 @@ def uebergabe(art, tag, einheit, zaehler_basis, abnutzung):
 def vertragsart(einheit):
     if einheit["typ"] != "wohnung":
         return "unbefristet"
-    return random.choices(["unbefristet", "staffel", "index"], [60, 25, 15])[0]
+    return rnd.choices(["unbefristet", "staffel", "index"], [60, 25, 15])[0]
 
 
 def mietverlauf(art, beginn, ende, kalt_start):
@@ -224,8 +225,8 @@ def mietverlauf(art, beginn, ende, kalt_start):
             break
         if art == "unbefristet" and not ja(0.6):
             continue
-        faktor = {"unbefristet": random.uniform(1.05, 1.15), "staffel": random.uniform(1.02, 1.03),
-                  "index": random.uniform(1.015, 1.07)}[art]
+        faktor = {"unbefristet": rnd.uniform(1.05, 1.15), "staffel": rnd.uniform(1.02, 1.03),
+                  "index": rnd.uniform(1.015, 1.07)}[art]
         neu = euro(kalt * faktor)
         anpassungen.append({
             "gueltig_ab": monatsanfang(d),
@@ -244,11 +245,11 @@ def vertraege_fuer_einheit(objekt, einheit, mieter, aktive_mieter_im_haus):
     vertraege = []
     beginn = objekt["verwaltet_seit"]
     leerstand_am_ende = ja(0.03)
-    zaehler = random.randint(1000, 5000)
+    zaehler = rnd.randint(1000, 5000)
     dauer_jahre = {"wohnung": (2, 9), "gewerbe": (5, 12), "garage": (3, 14), "stellplatz": (3, 14)}[einheit["typ"]]
 
     while beginn < HEUTE:
-        ende = monatsanfang(jahre(beginn, random.randint(*dauer_jahre)) + timedelta(days=random.randint(0, 300)))
+        ende = monatsanfang(jahre(beginn, rnd.randint(*dauer_jahre)) + timedelta(days=rnd.randint(0, 300)))
         ist_letzter = ende >= HEUTE
         if ist_letzter and leerstand_am_ende:
             break
@@ -260,7 +261,7 @@ def vertraege_fuer_einheit(objekt, einheit, mieter, aktive_mieter_im_haus):
         if einheit["typ"] == "gewerbe":
             vertragsmieter = [neuer_mieter(mieter, firma=True)]
         elif einheit["typ"] in ("garage", "stellplatz") and aktive_mieter_im_haus and ja(0.5):
-            vertragsmieter = [random.choice(aktive_mieter_im_haus)]
+            vertragsmieter = [rnd.choice(aktive_mieter_im_haus)]
         else:
             erster = neuer_mieter(mieter)
             vertragsmieter = [erster]
@@ -272,13 +273,13 @@ def vertraege_fuer_einheit(objekt, einheit, mieter, aktive_mieter_im_haus):
         if ist_letzter:
             gekuendigt = ja(0.04)
             status = "gekuendigt" if gekuendigt else "aktiv"
-            vertragsende = monatsanfang(HEUTE + timedelta(days=random.randint(40, 100))) if gekuendigt else None
+            vertragsende = monatsanfang(HEUTE + timedelta(days=rnd.randint(40, 100))) if gekuendigt else None
         else:
             status, vertragsende = "beendet", ende
 
         vertrag = {
             "_id": ObjectId(),
-            "nummer": f"V-{beginn.year}-{random.randint(1000, 9999)}",
+            "nummer": f"V-{beginn.year}-{rnd.randint(1000, 9999)}",
             "objekt_id": objekt["_id"],
             "einheit_id": einheit["einheit_id"],
             "einheit_typ": einheit["typ"],
@@ -292,7 +293,7 @@ def vertraege_fuer_einheit(objekt, einheit, mieter, aktive_mieter_im_haus):
             "miete": {
                 "kalt": kalt_aktuell,
                 "kalt_bei_beginn": kalt_start,
-                "nebenkosten_vorauszahlung": euro(einheit.get("markt_nebenkosten", 0) * random.uniform(0.9, 1.1)),
+                "nebenkosten_vorauszahlung": euro(einheit.get("markt_nebenkosten", 0) * rnd.uniform(0.9, 1.1)),
             },
             "mietanpassungen": anpassungen,
         }
@@ -300,17 +301,17 @@ def vertraege_fuer_einheit(objekt, einheit, mieter, aktive_mieter_im_haus):
             vertrag["ende"] = vertragsende
         if einheit["typ"] == "wohnung":
             vertrag["kaution"] = {"betrag": euro(kalt_start * 3),
-                                  "art": random.choices(["Barkaution", "Kautionskonto", "Bürgschaft"], [30, 55, 15])[0]}
+                                  "art": rnd.choices(["Barkaution", "Kautionskonto", "Bürgschaft"], [30, 55, 15])[0]}
             abnutzung = min(40, int((min(ende, HEUTE) - beginn).days / 365 * 5))
             vertrag["uebergaben"] = [uebergabe("einzug", beginn, einheit, zaehler, 0)]
-            zaehler += int((min(ende, HEUTE) - beginn).days * random.uniform(5, 9))
+            zaehler += int((min(ende, HEUTE) - beginn).days * rnd.uniform(5, 9))
             if status == "beendet":
                 vertrag["uebergaben"].append(uebergabe("auszug", ende - timedelta(days=1), einheit, zaehler, abnutzung))
         if einheit["typ"] == "gewerbe" and einheit.get("umsatzsteuer_option"):
             vertrag["miete"]["umsatzsteuer_prozent"] = 19
 
         vertraege.append(vertrag)
-        beginn = monatsanfang(ende + timedelta(days=random.choice([0, 0, 0, 31, 62])))
+        beginn = monatsanfang(ende + timedelta(days=rnd.choice([0, 0, 0, 31, 62])))
     return vertraege
 
 
@@ -346,19 +347,19 @@ def status_nach_alter(tag):
     if tage > 180:
         return "erledigt"
     if tage > 45:
-        return random.choices(["erledigt", "in_bearbeitung"], [60, 40])[0]
-    return random.choices(["offen", "in_bearbeitung", "erledigt"], [60, 30, 10])[0]
+        return rnd.choices(["erledigt", "in_bearbeitung"], [60, 40])[0]
+    return rnd.choices(["offen", "in_bearbeitung", "erledigt"], [60, 30, 10])[0]
 
 
 def verlauf(tag, status, eintraege):
     out, d = [{"datum": tag, "eintrag": "Vorgang angelegt"}], tag
     for e in eintraege:
-        d = d + timedelta(days=random.randint(1, 10))
+        d = d + timedelta(days=rnd.randint(1, 10))
         if d > HEUTE:
             break
         out.append({"datum": d, "eintrag": e})
     if status == "erledigt":
-        out.append({"datum": min(HEUTE, d + timedelta(days=random.randint(1, 14))), "eintrag": "Vorgang abgeschlossen"})
+        out.append({"datum": min(HEUTE, d + timedelta(days=rnd.randint(1, 14))), "eintrag": "Vorgang abgeschlossen"})
     return out
 
 
@@ -383,12 +384,12 @@ def vorgaenge_fuer_objekt(objekt, vertraege):
 
         # Schäden: im Schnitt etwa einer pro Wohnung alle zwei Jahre
         tage = [datum(v["beginn"], laufzeit_ende)
-                for _ in range(int(jahre_laufzeit * random.uniform(0.2, 0.8)) + (1 if ja(0.3) else 0))]
+                for _ in range(int(jahre_laufzeit * rnd.uniform(0.2, 0.8)) + (1 if ja(0.3) else 0))]
         for tag in tage:
-            kat, gewerk, prio, kmin, kmax, versicherung, minderung = random.choice(
+            kat, gewerk, prio, kmin, kmax, versicherung, minderung = rnd.choice(
                 [s for s in SCHAEDEN if hat_aufzug or s[0] != "Aufzug ausgefallen"])
             doc = basis("schaden", objekt, tag, v)
-            schaetzung = euro(random.uniform(kmin, kmax))
+            schaetzung = euro(rnd.uniform(kmin, kmax))
             doc.update({
                 "titel": kat,
                 "kategorie": kat,
@@ -401,24 +402,24 @@ def vorgaenge_fuer_objekt(objekt, vertraege):
                                                         "Reparatur durchgeführt"]),
             })
             if doc["status"] == "erledigt":
-                doc["kosten"]["rechnung"] = euro(schaetzung * random.uniform(0.8, 1.3))
+                doc["kosten"]["rechnung"] = euro(schaetzung * rnd.uniform(0.8, 1.3))
             if versicherung and ja(0.7):
                 doc["versicherungsfall"] = {"versicherer": "Wohngebäudeversicherung",
-                                            "schadennummer": f"S-{random.randint(100000, 999999)}"}
+                                            "schadennummer": f"S-{rnd.randint(100000, 999999)}"}
             out.append(doc)
 
             # Mietminderung als eigener Vorgang, verweist auf den auslösenden Schaden
             if minderung and ja(0.35):
-                m = basis("mietminderung", objekt, min(HEUTE, tag + timedelta(days=random.randint(1, 7))), v)
+                m = basis("mietminderung", objekt, min(HEUTE, tag + timedelta(days=rnd.randint(1, 7))), v)
                 m.update({"titel": f"Mietminderung wegen {kat}", "schaden_id": doc["_id"],
-                          "quote_prozent": random.choice([10, 15, 20, 25, 30]),
-                          "zeitraum": {"von": tag, "bis": tag + timedelta(days=random.randint(14, 120))},
-                          "einigung": random.choice(["anerkannt", "Vergleich", "abgelehnt", "offen"])})
+                          "quote_prozent": rnd.choice([10, 15, 20, 25, 30]),
+                          "zeitraum": {"von": tag, "bis": tag + timedelta(days=rnd.randint(14, 120))},
+                          "einigung": rnd.choice(["anerkannt", "Vergleich", "abgelehnt", "offen"])})
                 out.append(m)
 
         # Korrespondenz
-        for _ in range(int(jahre_laufzeit * random.uniform(0.3, 1.2))):
-            richtung, kanal, betreff = random.choice(KORRESPONDENZ)
+        for _ in range(int(jahre_laufzeit * rnd.uniform(0.3, 1.2))):
+            richtung, kanal, betreff = rnd.choice(KORRESPONDENZ)
             tag = datum(v["beginn"], laufzeit_ende)
             doc = basis("korrespondenz", objekt, tag, v)
             doc.update({"titel": betreff, "richtung": richtung, "kanal": kanal,
@@ -429,26 +430,26 @@ def vorgaenge_fuer_objekt(objekt, vertraege):
         for a in v["mietanpassungen"]:
             if v["art"] != "unbefristet":
                 continue
-            tag = a["gueltig_ab"] - timedelta(days=random.randint(95, 120))
+            tag = a["gueltig_ab"] - timedelta(days=rnd.randint(95, 120))
             doc = basis("mieterhoehung", objekt, tag, v)
             doc.update({"titel": "Mieterhöhungsverlangen", "status": "erledigt",
                         "alt": a["alt"], "neu": a["neu"], "gueltig_ab": a["gueltig_ab"],
-                        "zustimmung": random.choices(["erteilt", "nach Rücksprache erteilt", "teilweise"], [80, 15, 5])[0]})
+                        "zustimmung": rnd.choices(["erteilt", "nach Rücksprache erteilt", "teilweise"], [80, 15, 5])[0]})
             out.append(doc)
 
         # Kündigung bei beendeten oder gekündigten Verträgen
         if "ende" in v:
-            tag = v["ende"] - timedelta(days=random.randint(90, 100))
+            tag = v["ende"] - timedelta(days=rnd.randint(90, 100))
             doc = basis("kuendigung", objekt, tag, v)
             doc.update({"titel": "Kündigung des Mietvertrags", "zum": v["ende"],
-                        "durch": random.choices(["Mieter", "Vermieter"], [90, 10])[0],
+                        "durch": rnd.choices(["Mieter", "Vermieter"], [90, 10])[0],
                         "status": "erledigt" if v["status"] == "beendet" else "in_bearbeitung"})
             out.append(doc)
 
     # Wiederkehrende Fristen je Objekt (die nächsten Fälligkeiten)
     for titel, monat in [("Nebenkostenabrechnung erstellen", 12), ("Rauchmelderwartung", 3), ("Heizungswartung", 9)]:
         faellig = datetime(HEUTE.year + (monat < HEUTE.month), monat, 28 if monat != 12 else 31)
-        doc = basis("frist", objekt, HEUTE - timedelta(days=random.randint(0, 30)))
+        doc = basis("frist", objekt, HEUTE - timedelta(days=rnd.randint(0, 30)))
         doc.update({"titel": titel, "faellig_am": faellig, "wiederkehrend": "jährlich", "status": "offen"})
         out.append(doc)
     return out
@@ -519,6 +520,11 @@ def collections_anlegen():
 # ---------------------------------------------------------------- Ablauf
 
 def main():
+    # Seed bei jedem Lauf neu setzen, nicht nur beim Import: Der Reset-Knopf im Labor ruft main()
+    # im laufenden App-Prozess mehrfach auf und würde sonst jedes Mal einen anderen Datenstand erzeugen
+    rnd.seed(SEED)
+    fake.seed_instance(SEED)
+
     # Bestand: echte Angebote mit vollständiger Adresse aus der Region, je Adresse nur eines
     kandidaten = list(db.angebote.find(
         # Hausnummer muss mit einer Ziffer ab 1 beginnen (Platzhalter wie "--" oder "0" ausschließen)
@@ -531,7 +537,7 @@ def main():
         if key not in gesehen:
             gesehen.add(key)
             eindeutig.append(a)
-    auswahl = random.sample(eindeutig, ANZAHL_OBJEKTE)
+    auswahl = rnd.sample(eindeutig, ANZAHL_OBJEKTE)
 
     objekte, mieter, vertraege, vorgaenge = [], [], [], []
     for a in auswahl:
