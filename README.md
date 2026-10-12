@@ -15,7 +15,6 @@ einem relationalen Datenbanksystem?
 | Dokument | Inhalt |
 |---|---|
 | [Projektdokumentation (PDF)](<docs/Mietverwaltung mit MongoDB und Redis – Projektdokumentation.pdf>) | Problemstellung, Architektur, Datenmodell, NoSQL-Konzepte mit Messwerten, Vergleich mit RDBMS, Fazit |
-| [Erklärung der Anwendung und Leitfaden zur Live-Demo (PDF)](<docs/Mietverwaltung – Erklärung der Anwendung und Leitfaden zur Live-Demo.pdf>) | alle Seiten und Experimente erklärt, Ablauf der Vorführung, Notfallplan |
 | [Präsentation (PPTX)](<docs/Mietverwaltung mit MongoDB und Redis.pptx>) | 10 Folien mit Sprechernotizen |
 
 ## Voraussetzungen
@@ -102,7 +101,7 @@ scripts/
   generate.py          Objekte, Mieter, Verträge, Vorgänge; Validatoren und Indizes
   reset.py             Import + Generator + Redis leeren
 data/raw/              Ablage für immo_data.csv (nicht versioniert)
-docs/                  Projektdokumentation, Leitfaden, Präsentation
+docs/                  Projektdokumentation, Präsentation
 docker-compose.yml     Replica Set, Redis, App
 ```
 
