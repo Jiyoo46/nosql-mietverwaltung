@@ -1,10 +1,11 @@
-fastapi>=0.115
-uvicorn[standard]>=0.30
-pymongo>=4.10
-redis>=5.0
-pydantic-settings>=2.4
-email-validator>=2.1
-jinja2>=3.1
-faker>=30.0
-pandas>=2.2
-docker>=7.0
+# Exakte Versionen: Der Generator erzeugt nur mit derselben Faker-Version denselben Datenstand (Seed 42)
+fastapi==0.142.2
+uvicorn[standard]==0.54.0
+pymongo==4.18.2
+redis==8.1.0
+pydantic-settings==2.15.0
+email-validator==2.3.0
+jinja2==3.1.6
+faker==40.40.0
+pandas==3.0.6
+docker==7.2.0

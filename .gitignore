@@ -10,3 +10,6 @@ __pycache__/
 
 # Sperrdateien von Word/PowerPoint, solange ein Dokument geöffnet ist
 ~$*
+
+# Persönliche Unterlagen zur Präsentation (z. B. Sprechtexte), nur lokal
+privat/
