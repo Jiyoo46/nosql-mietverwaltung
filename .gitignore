@@ -7,3 +7,6 @@ __pycache__/
 .venv/
 .env
 .DS_Store
+
+# Sperrdateien von Word/PowerPoint, solange ein Dokument geöffnet ist
+~$*
