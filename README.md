@@ -7,6 +7,9 @@ Die Anwendung dient als Demonstrationsobjekt: Jede Seite zeigt neben den Daten a
 und ein NoSQL-Labor führt sieben Konzepte live vor, jeweils mit Vorteil und Preis gegenüber einer
 relationalen Datenbank.
 
+> Crawling, Indexierung und die Nutzung dieses Repositorys für KI-Training oder KI-Suche sind nicht erwünscht
+> (siehe [`robots.txt`](robots.txt) und [Ausschluss von Crawlern und KI-Agenten](#ausschluss-von-crawlern-und-ki-agenten)).
+
 **Leitfrage:** Warum eignet sich ein Document Store für die Mietverwaltung, und was kostet er gegenüber
 einem relationalen Datenbanksystem?
 
@@ -118,16 +121,16 @@ docker-compose.yml     Replica Set, Redis, App
 
 ## Ausschluss von Crawlern und KI-Agenten
 
-Die App schließt Suchmaschinen, Scraper und KI-Agenten auf drei Ebenen aus:
+Suchmaschinen, Scraper und KI-Agenten sind ausgeschlossen. Die Regeln sperren alle Crawler und nennen
+KI-Agenten und Scraper zusätzlich namentlich (u. a. GPTBot, ClaudeBot, Google-Extended, PerplexityBot,
+CCBot, Bytespider).
 
-| Ebene | Umsetzung |
+| Ort | Umsetzung |
 |---|---|
-| `/robots.txt` | sperrt alle Crawler; KI-Agenten und Scraper (u. a. GPTBot, ClaudeBot, Google-Extended, PerplexityBot, CCBot, Bytespider) sind zusätzlich namentlich ausgeschlossen ([`app/static/robots.txt`](app/static/robots.txt)) |
-| HTTP-Header | jede Antwort trägt `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex, noai, noimageai` (`app/main.py`) |
-| HTML | jede Seite enthält dasselbe als `<meta name="robots">` (`app/templates/base.html`) |
-
-`robots.txt` und die Kennzeichnungen sind Anweisungen, an die sich Crawler freiwillig halten; sie wirken nur
-dort, wo die App selbst ausgeliefert wird. Für dieses Repository auf GitHub gilt GitHubs eigene `robots.txt`.
+| Repository | [`robots.txt`](robots.txt) im Hauptverzeichnis |
+| App: `/robots.txt` | dieselben Regeln, ausgeliefert von der App ([`app/static/robots.txt`](app/static/robots.txt)) |
+| App: HTTP-Header | jede Antwort trägt `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex, noai, noimageai` (`app/main.py`) |
+| App: HTML | jede Seite enthält dasselbe als `<meta name="robots">` (`app/templates/base.html`) |
 
 ## Quellen und Lizenzen
 
