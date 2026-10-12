@@ -1,6 +1,7 @@
 """HTML-Seiten. Sie nutzen dieselben Funktionen wie die JSON-API, damit Oberfläche und API nie auseinanderlaufen."""
 import math
 from datetime import date
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
@@ -25,6 +26,16 @@ KATEGORIEN = [("Wasserschaden", "Sanitär"), ("Heizungsausfall", "Heizungsbau"),
               ("Rauchmelder defekt", "Elektro"), ("Fenster undicht", "Fensterbau"), ("Abfluss verstopft", "Sanitär"),
               ("Aufzug ausgefallen", "Aufzugsservice")]
 templates.env.globals.update(EINHEIT_TYP=EINHEIT_TYP, VORGANG_TYP=VORGANG_TYP, STATUS=STATUS, VERTRAGSART=VERTRAGSART)
+
+STATIC = Path("app/static")
+
+
+def static(datei):
+    """URL mit Änderungszeit als Version: Nach jeder Änderung lädt der Browser die Datei neu statt aus dem Cache."""
+    return f"/static/{datei}?v={int((STATIC / datei).stat().st_mtime)}"
+
+
+templates.env.globals["static"] = static
 
 
 def seite(request, name, aktiv, **kontext):
